@@ -1,0 +1,1 @@
+## This is the repo for the deep learning course at iiis, Tsinghua, Spring 2026. It contains both Python implementations of deep learning modules and LaTeX writeups for assignments. Please follow the guidelines in `.github/copilot-instructions.md` for implementation and writing standards.
