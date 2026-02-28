@@ -48,7 +48,28 @@ class MaxPool2d(Module):
             Gradient of the loss w.r.t. the input, shape (batch_size, channels, h, w).
         """
         # YOUR CODE BEGIN.
+        _, _, h, w = x.shape
+        kernel_h, kernel_w = self.kernel_size
+        stride_h, stride_w = self.stride
+        out_h = (h - kernel_h) // stride_h + 1
+        out_w = (w - kernel_w) // stride_w + 1
 
-        raise NotImplementedError
+        grad_input = np.zeros_like(x)
 
-        # YOUR CODE END.
+        for i in range(out_h):
+            for j in range(out_w):
+                hs, ws = i * stride_h, j * stride_w
+                # window: (batch, channels, kernel_h, kernel_w)
+                window = x[:, :, hs:hs+kernel_h, ws:ws+kernel_w]
+                b, c = window.shape[:2]
+                # flatten spatial dims, find argmax
+                flat = window.reshape(b, c, -1)
+                max_pos = np.argmax(flat, axis=-1)  # (batch, channels)
+                # build mask: 1 at max position, 0 elsewhere
+                mask = np.zeros_like(flat)
+                mask[np.arange(b)[:, None], np.arange(c)[None, :], max_pos] = 1
+                mask = mask.reshape(b, c, kernel_h, kernel_w)
+                # route upstream gradient through the mask
+                grad_input[:, :, hs:hs+kernel_h, ws:ws+kernel_w] += mask * grad[:, :, i:i+1, j:j+1]
+
+        return grad_input

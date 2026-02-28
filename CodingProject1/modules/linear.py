@@ -54,7 +54,12 @@ class Linear(Module):
                     - bias: Gradient w.r.t. bias, shape (out_features,).
         """
         # YOUR CODE BEGIN.
+        # First is dL/dx = dL/dy * dy/dx, where dy/dx = weight^T
+        grad_input = grad @ self.weight.T
 
-        raise NotImplementedError
+        # Compute gradients w.r.t. weight and bias
+        grad_weight = x.T @ grad
+        grad_bias = np.sum(grad, axis=0)
 
-        # YOUR CODE END.
+        # Return gradient w.r.t. input and gradients namedtuple
+        return grad_input, self.Gradients(weight=grad_weight, bias=grad_bias)

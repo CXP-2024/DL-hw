@@ -40,6 +40,9 @@ class Unflatten(Module):
         """
         # YOUR CODE BEGIN.
 
-        raise NotImplementedError
+        #raise NotImplementedError
+        # input is x, grad is the upstream gradient w.r.t. the output (new shape)
+        # hence the gradient w.r.t. the input should be reshaped back to the original shape of x
+        return np.reshape(grad, x.shape)
 
         # YOUR CODE END.

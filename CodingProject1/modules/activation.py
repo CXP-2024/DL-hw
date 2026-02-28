@@ -23,9 +23,10 @@ class ReLU(Module):
         Returns:
             Gradient of the loss w.r.t. the input, shape (batch_size, *features).
         """
-        # YOUR CODE BEGIN.
-
-        raise NotImplementedError
+        # YOUR CODE BEGIN. input x, output y, grad dL/dy, return dL/dx
+        # if x>0, then dL/dy=dL/dx, else dL/dx=0
+        relu_grad = np.where(x > 0, 1.0, 0.0)
+        return grad * relu_grad
 
         # YOUR CODE END.
 
@@ -50,7 +51,9 @@ class Tanh(Module):
             Gradient of the loss w.r.t. the input, shape (batch_size, *features).
         """
         # YOUR CODE BEGIN.
-
-        raise NotImplementedError
+        # dL/dx = dL/dy * dy/dx, where dy/dx = 1 - tanh(x)^2
+        tanh_x = np.tanh(x)
+        tanh_grad = 1.0 - tanh_x ** 2
+        return grad * tanh_grad
 
         # YOUR CODE END.
