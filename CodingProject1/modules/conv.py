@@ -81,7 +81,34 @@ class Conv2d(Module):
                     - bias: Gradient w.r.t. bias, shape (out_channels,).
         """
         # YOUR CODE BEGIN.
+        # Compute gradients w.r.t. weight and bias
+        _, _, h, w = x.shape
+        kernel_h, kernel_w = self.kernel_size
+        stride_h, stride_w = self.stride
+        out_h = (h - kernel_h) // stride_h + 1
+        out_w = (w - kernel_w) // stride_w + 1
+        idx_h = np.arange(kernel_h)[:, None] + np.arange(out_h)[None, :] * stride_h
+        idx_w = np.arange(kernel_w)[:, None] + np.arange(out_w)[None, :] * stride_w
+        windows = x[:, :, idx_h[:, None, :, None], idx_w[None, :, None, :]]
+        # windows shape: (batch_size, in_channels, kernel_h, kernel_w, out_h, out_w)
 
-        raise NotImplementedError
+        # For grad_weight, we want to sum over the batch dimension and the output spatial dimensions, grad_weight(out_channels, in_channels, kernel_h, kernel_w) = sum_{b, out_h, out_w} grad(b, out_channels, out_h, out_w) * windows(b, in_channels, kernel_h, kernel_w, out_h, out_w)
+        # We can use einsum to express this:
+        grad_weight = np.einsum("bohw, bc yx hw -> ocyx", grad, windows)
 
-        # YOUR CODE END.
+        # Compute gradient w.r.t. bias
+        grad_bias = np.sum(grad, axis=(0, 2, 3))  # sum over batch, out_h, out_w dimensions
+
+        # Compute gradient w.r.t. input, add each input window's contribution to the appropriate location in the input gradient
+        grad_input = np.zeros_like(x)
+        for i in range(out_h):
+            for j in range(out_w):
+                hs, ws = i * stride_h, j * stride_w
+                g = grad[:, :, i:i+1, j:j+1]
+                # g shape: (batch_size, out_channels, 1, 1)
+                # compute gradient w.r.t. input for this window
+                grad_input[:, :, hs:hs+kernel_h, ws:ws+kernel_w] += np.einsum("bohw, ocyx -> bc yx", g, self.weight)
+                # weight shape: (out_channels, in_channels, kernel_h, kernel_w)
+                # grad_input shape: (batch_size, in_channels, kernel_h, kernel_w)
+
+        return grad_input, self.Gradients(weight=grad_weight, bias=grad_bias)

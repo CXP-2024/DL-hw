@@ -54,14 +54,18 @@ class MaxPool2d(Module):
         out_h = (h - kernel_h) // stride_h + 1
         out_w = (w - kernel_w) // stride_w + 1
 
-        grad_input = np.zeros_like(x)
+        idx_h = np.arange(out_h)[:, None] * stride_h + np.arange(kernel_h)
+        idx_w = np.arange(out_w)[:, None] * stride_w + np.arange(kernel_w)
 
+        windows = x[:, :, idx_h[:, None, :, None], idx_w[None, :, None, :]]
+        # windows shape: (batch_size, channels, out_h,  out_w, kernel_h, kernel_w)
+
+        # route upstream gradient through the mask
+        b, c = x.shape[0], x.shape[1]
+        grad_input = np.zeros_like(x)
         for i in range(out_h):
             for j in range(out_w):
-                hs, ws = i * stride_h, j * stride_w
-                # window: (batch, channels, kernel_h, kernel_w)
-                window = x[:, :, hs:hs+kernel_h, ws:ws+kernel_w]
-                b, c = window.shape[:2]
+                window = windows[:, :, i, j, :, :]
                 # flatten spatial dims, find argmax
                 flat = window.reshape(b, c, -1)
                 max_pos = np.argmax(flat, axis=-1)  # (batch, channels)
@@ -69,7 +73,6 @@ class MaxPool2d(Module):
                 mask = np.zeros_like(flat)
                 mask[np.arange(b)[:, None], np.arange(c)[None, :], max_pos] = 1
                 mask = mask.reshape(b, c, kernel_h, kernel_w)
-                # route upstream gradient through the mask
-                grad_input[:, :, hs:hs+kernel_h, ws:ws+kernel_w] += mask * grad[:, :, i:i+1, j:j+1]
-
+                # route gradient to max positions
+                grad_input[:, :, idx_h[i][:, None], idx_w[j][None, :]] += mask * grad[:, :, i:i+1, j:j+1]
         return grad_input
