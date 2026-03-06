@@ -2,3 +2,7 @@
 *.log
 *.gz
 *pycache__/
+*data/
+*.zip
+.claude/
+.vscode/
