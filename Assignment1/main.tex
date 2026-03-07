@@ -1,0 +1,66 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+\usepackage{xcolor}
+
+\newcounter{placeholderCount}
+\newcommand{\placeholder}[1]{{
+    \stepcounter{placeholderCount}
+    \color{red} [#1]
+}}
+
+\newcounter{solutionCount}
+\newcommand{\solution}[1]{
+    \stepcounter{solutionCount}
+    \paragraph{Solution \thesolutionCount.}
+    {
+        #1
+    }
+}
+
+\title{
+    Deep Learning (Spring 2026) \\
+    Solution for Assignment 1
+}
+\author{
+    Pan Changxun
+    \\
+    2024011323
+}
+
+\begin{document}
+
+\maketitle
+
+\solution{
+    False. The ReLU activation function f (z) = max(0, z) is not differentiable at z = 0, undefined.
+}
+
+\solution{
+    False, because Batch Normalization and Dropout can coexist, provided they are sequenced correctly—typically placing BN before Dropout—to avoid the 'variance shift' that can degrade model performance
+}
+
+\solution{
+    True
+}
+
+\solution{
+    For descent lemma
+}
+
+\solution{
+    I want to learn how to build and train deep neural networks, and understand the underlying principles and techniques. This course will provide me with the necessary knowledge and skills to pursue a career in AI research or industry.
+}
+
+\solution{
+    I use AI for Problem 5 since I want to write a more fluent and well-structured answer.
+}
+
+\ifnum\value{placeholderCount}>0
+    \vfill
+    \begin{center}
+        \color{red} \framebox{\textbf{WARNING: PLEASE REMOVE ALL PLACEHOLDERS BEFORE SUBMISSION}}
+    \end{center}
+\fi
+
+\end{document}
