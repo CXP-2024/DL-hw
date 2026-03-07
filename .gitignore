@@ -6,3 +6,5 @@
 *.zip
 .claude/
 .vscode/
+@CLAUDECODE/
+check_point/

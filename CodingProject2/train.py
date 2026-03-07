@@ -25,6 +25,21 @@ from evaluate import DATASET_ROOT, DEVICE, TRANSFORM
 from modules import CustomModel
 
 
+def _add_time_axis(ax, epochs, elapsed_min) -> None:
+    """Add a secondary x-axis showing elapsed time in minutes."""
+    ax2 = ax.twiny()
+    ax2.set_xlim(ax.get_xlim())
+    # Show a few time ticks aligned to epoch positions
+    n = len(elapsed_min)
+    step = max(1, n // 5)
+    tick_idx = list(range(0, n, step))
+    if (n - 1) not in tick_idx:
+        tick_idx.append(n - 1)
+    ax2.set_xticks([epochs[i] for i in tick_idx])
+    ax2.set_xticklabels([f"{elapsed_min[i]:.1f}m" for i in tick_idx])
+    ax2.set_xlabel("Elapsed Time")
+
+
 def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     """Save training/validation curves to figures/ directory."""
     import matplotlib
@@ -34,44 +49,53 @@ def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
 
     fig_dir = Path("figures")
     fig_dir.mkdir(exist_ok=True)
-    epochs = range(1, len(history["train_loss"]) + 1)
+    epochs = list(range(1, len(history["train_loss"]) + 1))
+    elapsed_min = history.get("elapsed_min", [])
+    has_time = len(elapsed_min) == len(epochs)
+    total_time = f" ({elapsed_min[-1]:.1f} min)" if has_time else ""
 
     # --- Figure 1: Loss curve ---
-    plt.figure(figsize=(8, 5))
-    plt.plot(epochs, history["train_loss"], label="Train Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training Loss Curve")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(fig_dir / "loss_curve.png", dpi=150)
-    plt.close()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(epochs, history["train_loss"], label="Train Loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title(f"Training Loss Curve{total_time}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if has_time:
+        _add_time_axis(ax, epochs, elapsed_min)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "loss_curve.png", dpi=150)
+    plt.close(fig)
 
     # --- Figure 2: Accuracy curves ---
-    plt.figure(figsize=(8, 5))
-    plt.plot(epochs, [a * 100 for a in history["train_acc"]], label="Train Acc")
-    plt.plot(epochs, [a * 100 for a in history["val_acc"]], label="Val Acc")
-    plt.axhline(y=best_acc * 100, color="r", linestyle="--", alpha=0.5, label=f"Best Val: {best_acc:.2%}")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy (%)")
-    plt.title("Training & Validation Accuracy")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(fig_dir / "accuracy_curve.png", dpi=150)
-    plt.close()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(epochs, [a * 100 for a in history["train_acc"]], label="Train Acc")
+    ax.plot(epochs, [a * 100 for a in history["val_acc"]], label="Val Acc")
+    ax.axhline(y=best_acc * 100, color="r", linestyle="--", alpha=0.5, label=f"Best Val: {best_acc:.2%}")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title(f"Training & Validation Accuracy{total_time}")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if has_time:
+        _add_time_axis(ax, epochs, elapsed_min)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "accuracy_curve.png", dpi=150)
+    plt.close(fig)
 
     # --- Figure 3: Learning rate schedule ---
-    plt.figure(figsize=(8, 5))
-    plt.plot(epochs, history["lr"])
-    plt.xlabel("Epoch")
-    plt.ylabel("Learning Rate")
-    plt.title("Learning Rate Schedule")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(fig_dir / "lr_schedule.png", dpi=150)
-    plt.close()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(epochs, history["lr"])
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Learning Rate")
+    ax.set_title(f"Learning Rate Schedule{total_time}")
+    ax.grid(True, alpha=0.3)
+    if has_time:
+        _add_time_axis(ax, epochs, elapsed_min)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "lr_schedule.png", dpi=150)
+    plt.close(fig)
 
     logging.info(f"Training curves saved to {fig_dir}/")
 
@@ -87,7 +111,7 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
     WARMUP_EPOCHS = 5
     LABEL_SMOOTHING = 0.1
     MIXUP_ALPHA = 0.2
-    MAX_TRAIN_MINUTES = 25  # safety margin within 30-min limit
+    MAX_TRAIN_MINUTES = 100
 
     device_type = DEVICE.type
     use_amp = device_type == "cuda"
@@ -172,6 +196,7 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
         "train_acc": [],
         "val_acc": [],
         "lr": [],
+        "elapsed_min": [],
     }
 
     # ======================== Training Loop ========================
@@ -257,6 +282,7 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
         history["train_acc"].append(train_acc)
         history["val_acc"].append(val_acc)
         history["lr"].append(optimizer.param_groups[0]["lr"])
+        history["elapsed_min"].append((time.time() - start_time) / 60.0)
 
         # Track best model
         if val_acc > best_acc:
