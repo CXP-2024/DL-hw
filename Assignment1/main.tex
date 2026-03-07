@@ -79,7 +79,7 @@
     \]
 
     \textbf{Step 2: Gradient lower bound via strong convexity.}
-    Since $f$ is $\mu$-strongly convex, $f(x^\star) \ge f(x) + \nabla f(x)^T(x^\star - x) + \frac{\mu}{2}\|x-x^\star\|^2$. Since $x^\star$ minimizes $f$, rearranging gives:
+    Since $f$ is $\mu$-strongly convex, $f(x^\star) \ge f(x) + \nabla f(x)^T(x^\star - x) + \frac{\mu}{2}\|x-x^\star\|^2$. Since the later two terms are at least $-\|\nabla f(x)\|\cdot\|x-x^\star\| + \frac{\mu}{2}\|x-x^\star\|^2$, the minimum is attained at $\|x-x^\star\| = \frac{\|\nabla f(x)\|}{\mu}$, giving:
     \[
     \|\nabla f(x)\|^2 \ge 2\mu\big(f(x) - f(x^\star)\big).
     \]
@@ -258,7 +258,14 @@
 }
 
 \solution{
-    Used Claude (AI assistant) for brainstorming, verifying proofs, and editing solutions.
+    Used Claude (AI assistant by Anthropic) in the following capacities:
+    \begin{itemize}
+        \item \textbf{Solution ideation:} Brainstorming approaches and generating initial ideas for problem-solving strategies, particularly for structuring mathematical proofs and derivations.
+        \item \textbf{English grammar and writing:} Polishing and refining the English writing throughout the solutions to improve clarity, coherence, and academic tone.
+        \item \textbf{\LaTeX{} formatting:} Optimizing typesetting and layout of mathematical expressions, tables, and document structure for better readability and presentation.
+        \item \textbf{Result verification:} Cross-checking the correctness of intermediate computations, final answers, and logical consistency of proofs.
+    \end{itemize}
+    All final solutions were reviewed and verified by the author.
 }
 
 \ifnum\value{placeholderCount}>0
