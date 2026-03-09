@@ -87,28 +87,16 @@ Output
 - **SE attention:** Adds only ~0.2% parameters but improves accuracy by learning "which channels matter."
 - **Zero-init BN:** The last BN in each block has `gamma=0`, so blocks initially act as identity mappings, improving convergence.
 
-### Parameter Distribution
-
-| Module | Parameters | Share |
-|--------|-----------|-------|
-| Stem | 38,848 | 0.3% |
-| Layer 1 (64ch) | 148,992 | 1.3% |
-| Layer 2 (128ch) | 529,664 | 4.6% |
-| Layer 3 (256ch) | 2,116,096 | 18.6% |
-| Layer 4 (512ch) | 8,459,264 | 74.2% |
-| FC Head | 102,600 | 0.9% |
-| **Total** | **11,395,464** | |
-
 ---
 
 ## 3. Hyperparameters
 
 | Hyperparameter | Value |
 |----------------|-------|
-| Batch size | 128 |
-| Epochs | 100 |
-| Optimizer | SGD (Nesterov momentum=0.9) |
-| Initial learning rate | 0.1 |
+| Batch size | 512 |
+| Epochs | 30 |
+| Optimizer | **AdamW** |
+| Learning rate | 0.0075 |
 | LR schedule | 5-epoch linear warmup + cosine annealing |
 | Weight decay | 5e-4 |
 | Label smoothing | 0.1 |
@@ -127,7 +115,6 @@ Raw image (uint8)
  → ToDtype(float32, scale=True)                    # [0,255] → [0,1]
  → RandomCrop(64, padding=8, mode="reflect")       # simulate translation
  → RandomHorizontalFlip(p=0.5)                     # left-right flip
- → ColorJitter(0.2, 0.2, 0.2, 0.1)                # lighting variation
  → Normalize(ImageNet mean/std)                     # standardize
  → RandomErasing(p=0.25)                            # occlusion robustness
 ```
@@ -140,24 +127,32 @@ Linearly interpolates pairs of images and their labels using `lambda ~ Beta(0.2,
 
 ```
 LR
-0.10 ┤         ╭──╮
-     │        ╱    ╲
-0.08 ┤       ╱      ╲
-0.06 ┤     ╱          ╲
-0.04 ┤   ╱               ╲
-0.02 ┤ ╱                     ╲___
-0.00 ┼─────────────────────────────
-     0    5   20   40   60   80  100  epoch
-     ├warmup┤    cosine annealing
+0.0075 ┤       ╭──╮
+       │      ╱    ╲
+0.005  ┤    ╱        ╲
+       │  ╱            ╲
+0.0025 ┤╱                  ╲
+       │                       ╲___
+0.000  ┼────────────────────────────
+       0   5    10    15    20   30  epoch
+       ├warmup┤   cosine annealing
 ```
 
-5-epoch linear warmup avoids early instability from random weights. Cosine annealing provides smooth decay, avoiding the training shocks of step-based schedules.
+5-epoch linear warmup avoids early instability from random weights. Cosine annealing provides smooth decay to zero by the end of training.
+
+### Why AdamW over SGD
+
+After sweeping both SGD and Adam learning rates across a range of values, **AdamW with LR=0.0075** achieved the best trade-off between convergence speed and final accuracy within the 30-minute time budget. Compared to SGD:
+
+- Faster convergence in early epochs (adaptive per-parameter learning rates)
+- More robust to learning rate choice (wider range of good LRs)
+- Decoupled weight decay prevents interference with the adaptive gradient
 
 ### Other Techniques
 
 - **Label smoothing (0.1):** Softens one-hot targets to prevent overconfident predictions.
 - **AMP (FP16):** Reduces memory usage and leverages Tensor Cores for ~2x speedup on GPU.
-- **Best-model tracking:** Saves the checkpoint with highest validation accuracy, restoring it after training to avoid late-stage overfitting.
+- **Best-model tracking:** Saves the checkpoint with highest validation accuracy every 5 epochs, restoring it after training to avoid late-stage overfitting.
 
 ---
 
@@ -167,16 +162,18 @@ LR
 
 ![Training Loss](figures/loss_curve.png)
 
-Training loss decreases smoothly from ~5.1 to ~1.9 over 100 epochs, consistent with cosine annealing's gradual convergence pattern.
+Training loss decreases smoothly from ~5.0 to ~2.0 over 30 epochs, consistent with cosine annealing's gradual convergence pattern.
 
 ### Accuracy Curve
 
 ![Training & Validation Accuracy](figures/accuracy_curve.png)
 
-- **Best validation accuracy: 64.99%** (well above the 45% full-mark threshold)
-- Training and validation accuracy track closely until ~epoch 70, after which a mild generalization gap appears — mitigated by Mixup, dropout, and best-model selection.
-- Total training time: ~52 minutes on GPU.
+- **Best validation accuracy: 57.09%** (well above the 45% full-mark threshold)
+- Training accuracy reaches ~74% while validation accuracy reaches ~57%, showing a moderate generalization gap mitigated by Mixup, dropout, and label smoothing.
+- Total training time: **~6 minutes** on a single GPU.
 
 ### Learning Rate Schedule
 
 ![LR Schedule](figures/lr_schedule.png)
+
+The schedule shows 5-epoch linear warmup from 0.0015 to 0.0075, followed by cosine decay to 0 over the remaining 25 epochs.

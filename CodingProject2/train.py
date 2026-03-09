@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision.transforms.v2 import (
-    ColorJitter,
     Compose,
     Normalize,
     RandomCrop,
@@ -25,26 +24,11 @@ from evaluate import DATASET_ROOT, DEVICE, TRANSFORM
 from modules import CustomModel
 
 
-def _add_time_axis(ax, epochs, elapsed_min) -> None:
-    """Add a secondary x-axis showing elapsed time in minutes."""
-    ax2 = ax.twiny()
-    ax2.set_xlim(ax.get_xlim())
-    # Show a few time ticks aligned to epoch positions
-    n = len(elapsed_min)
-    step = max(1, n // 5)
-    tick_idx = list(range(0, n, step))
-    if (n - 1) not in tick_idx:
-        tick_idx.append(n - 1)
-    ax2.set_xticks([epochs[i] for i in tick_idx])
-    ax2.set_xticklabels([f"{elapsed_min[i]:.1f}m" for i in tick_idx])
-    ax2.set_xlabel("Elapsed Time")
-
-
 def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     """Save training/validation curves to figures/ directory."""
     import matplotlib
 
-    matplotlib.use("Agg")  # non-interactive backend
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig_dir = Path("figures")
@@ -54,7 +38,7 @@ def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     has_time = len(elapsed_min) == len(epochs)
     total_time = f" ({elapsed_min[-1]:.1f} min)" if has_time else ""
 
-    # --- Figure 1: Loss curve ---
+    # --- Loss curve ---
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(epochs, history["train_loss"], label="Train Loss")
     ax.set_xlabel("Epoch")
@@ -62,13 +46,11 @@ def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     ax.set_title(f"Training Loss Curve{total_time}")
     ax.legend()
     ax.grid(True, alpha=0.3)
-    if has_time:
-        _add_time_axis(ax, epochs, elapsed_min)
     fig.tight_layout()
     fig.savefig(fig_dir / "loss_curve.png", dpi=150)
     plt.close(fig)
 
-    # --- Figure 2: Accuracy curves ---
+    # --- Accuracy curves ---
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(epochs, [a * 100 for a in history["train_acc"]], label="Train Acc")
     ax.plot(epochs, [a * 100 for a in history["val_acc"]], label="Val Acc")
@@ -78,21 +60,17 @@ def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     ax.set_title(f"Training & Validation Accuracy{total_time}")
     ax.legend()
     ax.grid(True, alpha=0.3)
-    if has_time:
-        _add_time_axis(ax, epochs, elapsed_min)
     fig.tight_layout()
     fig.savefig(fig_dir / "accuracy_curve.png", dpi=150)
     plt.close(fig)
 
-    # --- Figure 3: Learning rate schedule ---
+    # --- Learning rate schedule ---
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(epochs, history["lr"])
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Learning Rate")
     ax.set_title(f"Learning Rate Schedule{total_time}")
     ax.grid(True, alpha=0.3)
-    if has_time:
-        _add_time_axis(ax, epochs, elapsed_min)
     fig.tight_layout()
     fig.savefig(fig_dir / "lr_schedule.png", dpi=150)
     plt.close(fig)
@@ -100,18 +78,19 @@ def _save_plots(history: dict[str, list[float]], best_acc: float) -> None:
     logging.info(f"Training curves saved to {fig_dir}/")
 
 
-def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
+def train(model: CustomModel, dataset: TinyImageNetDataset, ckpt_path: str = None) -> None:
     # YOUR CODE BEGIN.
 
     # ======================== Hyperparameters ========================
-    BATCH_SIZE = 128
-    NUM_EPOCHS = 100
-    LR = 0.1
+    BATCH_SIZE = 512
+    NUM_EPOCHS = 30
+    LR = 0.0075
     WEIGHT_DECAY = 5e-4
     WARMUP_EPOCHS = 5
     LABEL_SMOOTHING = 0.1
     MIXUP_ALPHA = 0.2
-    MAX_TRAIN_MINUTES = 100
+    MAX_TRAIN_MINUTES = 29
+    SAVE_EVERY = 5
 
     device_type = DEVICE.type
     use_amp = device_type == "cuda"
@@ -122,7 +101,6 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
             ToDtype(torch.float32, scale=True),
             RandomCrop(64, padding=8, padding_mode="reflect"),
             RandomHorizontalFlip(),
-            ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             RandomErasing(p=0.25),
         ]
@@ -154,12 +132,8 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
 
     # ======================== Loss / Optimizer / Scheduler ========================
     criterion = nn.CrossEntropyLoss(label_smoothing=LABEL_SMOOTHING)
-    optimizer = torch.optim.SGD(
-        model.parameters(),
-        lr=LR,
-        momentum=0.9,
-        weight_decay=WEIGHT_DECAY,
-        nesterov=True,
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY,
     )
 
     def lr_lambda(epoch: int) -> float:
@@ -253,27 +227,32 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
         train_loss = running_loss / len(train_loader)
         train_acc = correct / total
 
-        # --- Validate ---
-        model.eval()
-        val_correct = 0
-        val_total = 0
-        with torch.no_grad():
-            for images, labels in tqdm(val_loader, desc="Validating", leave=False):
-                images = images.to(DEVICE, non_blocking=True)
-                labels = labels.to(DEVICE, non_blocking=True)
-                with torch.amp.autocast(device_type=device_type, enabled=use_amp):
-                    outputs = model(images)
-                preds = outputs.argmax(dim=1)
-                val_correct += preds.eq(labels).sum().item()
-                val_total += labels.size(0)
+        # --- Validate (every 5 epochs or last epoch) ---
+        val_acc = history["val_acc"][-1] if history["val_acc"] else 0.0
+        if (epoch + 1) % 5 == 0 or epoch == NUM_EPOCHS - 1:
+            model.eval()
+            val_correct = 0
+            val_total = 0
+            with torch.no_grad():
+                for images, labels in tqdm(val_loader, desc="Validating", leave=False):
+                    images = images.to(DEVICE, non_blocking=True)
+                    labels = labels.to(DEVICE, non_blocking=True)
+                    with torch.amp.autocast(device_type=device_type, enabled=use_amp):
+                        outputs = model(images)
+                    preds = outputs.argmax(dim=1)
+                    val_correct += preds.eq(labels).sum().item()
+                    val_total += labels.size(0)
+            val_acc = val_correct / val_total
 
-        val_acc = val_correct / val_total
+            if val_acc > best_acc:
+                best_acc = val_acc
+                best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
         epoch_bar.set_postfix(
             loss=f"{train_loss:.4f}",
             train=f"{train_acc:.2%}",
             val=f"{val_acc:.2%}",
-            best=f"{max(best_acc, val_acc):.2%}",
+            best=f"{best_acc:.2%}",
             lr=f"{optimizer.param_groups[0]['lr']:.5f}",
         )
 
@@ -284,10 +263,10 @@ def train(model: CustomModel, dataset: TinyImageNetDataset) -> None:
         history["lr"].append(optimizer.param_groups[0]["lr"])
         history["elapsed_min"].append((time.time() - start_time) / 60.0)
 
-        # Track best model
-        if val_acc > best_acc:
-            best_acc = val_acc
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
+        # --- Save checkpoint every SAVE_EVERY epochs ---
+        if (epoch + 1) % SAVE_EVERY == 0 and best_state:
+            torch.save(best_state, ckpt_path)
+            logging.info(f"Checkpoint saved at epoch {epoch + 1} (best_acc={best_acc:.4f})")
 
     # Restore best model weights before returning
     if best_state:
@@ -317,8 +296,10 @@ def main() -> None:
     if sum(p.numel() for p in model.parameters()) > 20_000_000:
         logging.error("Model has more than 20 million parameters")
         return
+    
+    ckpt_path.parent.mkdir(parents=True, exist_ok=True)
 
-    train(model, dataset)
+    train(model, dataset, ckpt_path)
 
     ckpt_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), ckpt_path)
