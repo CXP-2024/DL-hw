@@ -6,6 +6,8 @@
 *.zip
 .claude/
 .vscode/
+test/
+checkpoints/
 @CLAUDECODE/
 check_point/
 figures_old/
