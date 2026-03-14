@@ -121,7 +121,41 @@
         \[
         W(p_x, p_{x+\epsilon}) \le \sqrt{\mathbb{E}_{\epsilon \sim p(\epsilon)}[\|\epsilon\|_2^2]}=V^{\frac{1}{2}}
         \]
-        \item 
+        \item By the triangle inequality (part 1), we have:
+        \[
+        W(p_r, p_g) \le W(p_r, p_{r+\epsilon}) + W(p_{r+\epsilon}, p_{g+\epsilon}) + W(p_{g+\epsilon}, p_g).
+        \]
+        From part 2, $W(p_r, p_{r+\epsilon}) \le V^{1/2}$ and $W(p_g, p_{g+\epsilon}) \le V^{1/2}$. Thus:
+        \[
+        W(p_r, p_g) \le 2V^{1/2} + W(p_{r+\epsilon}, p_{g+\epsilon}).
+        \]
+        It remains to bound $W(p_{r+\epsilon}, p_{g+\epsilon})$. By KR duality:
+        \[
+        W(p_{r+\epsilon}, p_{g+\epsilon}) = \sup_{\|f\|_L \le 1} \left( \mathbb{E}_{p_{r+\epsilon}}[f] - \mathbb{E}_{p_{g+\epsilon}}[f] \right).
+        \]
+        Since both distributions have support on a ball of diameter $C$, any 1-Lipschitz function $f$ satisfies $0 \le f(x) \le C$ on the support (after shifting by a constant, which does not change the difference of expectations). Therefore:
+        \begin{align*}
+        \mathbb{E}_{p_{r+\epsilon}}[f] - \mathbb{E}_{p_{g+\epsilon}}[f] &= \sum_x f(x)\bigl(p_{r+\epsilon}(x) - p_{g+\epsilon}(x)\bigr) \\
+        &\le C \sum_{x:\, p_{r+\epsilon}(x) > p_{g+\epsilon}(x)} \bigl(p_{r+\epsilon}(x) - p_{g+\epsilon}(x)\bigr) = C \cdot \mathrm{TV}(p_{r+\epsilon}, p_{g+\epsilon}).
+        \end{align*}
+        Next, we relate total variation to JSD. Let $m = \frac{1}{2}(p_{r+\epsilon} + p_{g+\epsilon})$. By Pinsker's inequality:
+        \[
+        \mathrm{TV}(p_{r+\epsilon},\, m) \le \sqrt{\tfrac{1}{2}\, KL(p_{r+\epsilon} \| m)}.
+        \]
+        Since $p_{r+\epsilon}(x) - m(x) = \frac{1}{2}(p_{r+\epsilon}(x) - p_{g+\epsilon}(x))$, we have $\mathrm{TV}(p_{r+\epsilon}, p_{g+\epsilon}) = 2\,\mathrm{TV}(p_{r+\epsilon}, m)$, so:
+        \[
+        \mathrm{TV}(p_{r+\epsilon}, p_{g+\epsilon}) \le 2\sqrt{\tfrac{1}{2}\, KL(p_{r+\epsilon}\|m)} \le 2\sqrt{JSD(p_{r+\epsilon}\|p_{g+\epsilon})},
+        \]
+        where the last step uses $KL(p_{r+\epsilon}\|m) \le 2\, JSD(p_{r+\epsilon}\|p_{g+\epsilon})$. Combining:
+        \[
+        W(p_r, p_g) \le 2V^{1/2} + 2C\sqrt{JSD(p_{r+\epsilon}\|p_{g+\epsilon})}.
+        \]
+
+        \item The result from part 3 suggests a practical trick: \textbf{add instance noise} to both real and generated images before feeding them to the discriminator. Specifically, we inject Gaussian noise $\epsilon \sim \mathcal{N}(0, \sigma^2 I)$ to both inputs. In this way, the discriminator effectively minimizes $JSD(p_{r+\epsilon}\|p_{g+\epsilon})$, which by the inequality in part 3, also minimizes an upper bound on the Wasserstein distance $W(p_r, p_g)$.
+
+        Moreover, adding noise ensures that $p_{r+\epsilon}$ and $p_{g+\epsilon}$ have overlapping (full) support, which prevents the vanishing gradient problem that arises when $p_r$ and $p_g$ have disjoint supports.
+
+        \textbf{Potential issue:} The noise introduces a bias term $2V^{1/2}$ in the upper bound. If $\sigma$ is too large, this bias dominates and the bound becomes loose, meaning the generator is not incentivized to match $p_r$ precisely. If $\sigma$ is too small, the smoothing effect is insufficient and JSD may still suffer from vanishing gradients. A common mitigation is to anneal (gradually decrease) the noise variance during training, but choosing the right schedule is non-trivial.
     \end{enumerate}
 }
 
