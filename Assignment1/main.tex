@@ -43,7 +43,7 @@
 }
 
 \solution{
-    True
+    False. GN operates independently of the batch dimension $N$, whereas BN strictly computes across $N$; since GN cannot aggregate data across samples, it can never be specialized into BN.
 }
 
 \solution{
