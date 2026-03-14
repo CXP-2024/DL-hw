@@ -35,227 +35,96 @@
 \maketitle
 
 \solution{
-    False. The ReLU activation function f (z) = max(0, z) is not differentiable at z = 0, undefined.
+    False. FID (Fréchet Inception Distance) measures the distance between the feature distributions of real and generated images. A smaller distance means higher similarity to real images. Therefore, a better generator achieves a lower FID score, not a higher one.
 }
 
 \solution{
-    False, because Batch Normalization and Dropout can coexist, provided they are sequenced correctly—typically placing BN before Dropout—to avoid the 'variance shift' that can degrade model performance
+    False. Training the discriminator to absolute optimality before updating the generator leads to the vanishing gradient problem. A perfect discriminator will reject fake images with near-absolute certainty, providing essentially zero gradients for the generator to learn from. In practice, they are trained using alternating updates.
 }
 
 \solution{
-    True
+    \begin{enumerate}
+        \item Since $JSD(p||q) = \frac{1}{2} \left( KL(p||m) + KL(q||m) \right)$, where $m = \frac{1}{2}(p+q)$, we express it using log probabilities:
+        \[
+        JSD(p||q) = \frac{1}{2} \sum_x p(x) \log\frac{p(x)}{m(x)} + \frac{1}{2} \sum_x q(x) \log\frac{q(x)}{m(x)}.
+        \]
+        Also, $m(x) = \frac{1}{2}(p(x) + q(x))$. Using Shannon Entropy $H(p) = -\sum_x p(x) \log p(x)$, we can rewrite:
+        \begin{align*}
+            JSD(p||q) &= \frac{1}{2} \sum_x p(x) \log\frac{p(x)}{\frac{1}{2}(p(x)+q(x))} + \frac{1}{2} \sum_x q(x) \log\frac{q(x)}{\frac{1}{2}(p(x)+q(x))}\\
+            &= \frac{1}{2} \sum_x p(x) \log p(x) + \frac{1}{2} \sum_x q(x) \log q(x) - \sum_x m(x) \log m(x)\\
+            &= -\frac{1}{2} H(p) - \frac{1}{2} H(q) + H(m)\\
+            &= H\!\left(\frac{p+q}{2}\right) - \frac{1}{2}(H(p) + H(q)).
+        \end{align*}
+
+        \item Now prove $0 \le JSD(p||q) \le \log 2$. For the lower bound, since KL divergence is non-negative (Gibbs' inequality), $JSD(p||q) \ge 0$. 
+        
+        For the upper bound, we use the fact that $KL(q||m) = \sum_x q(x) \log\frac{q(x)}{m(x)}$ and $m(x) = \frac{1}{2}(p(x)+q(x))$. The fraction $\frac{q(x)}{m(x)}=\frac{2q(x)}{q(x)+p(x)} \le 2$ implies $\log\frac{q(x)}{m(x)} \le \log 2$. Summing over the distribution yields $KL(q||m) \le \log 2$. Similarly, $KL(p||m) \le \log 2$. Thus:
+        \[
+        JSD(p||q) = \frac{1}{2} KL(p||m) + \frac{1}{2} KL(q||m) \le \frac{1}{2} \log 2 + \frac{1}{2} \log 2 = \log 2.
+        \]
+        When $q(x)\cdot p(x) = 0$ for all $x$ (disjoint supports), $JSD(p||q) = \log 2$. When $p = q$, $JSD(p||q) = 0$.
+
+        \item To prove the triangle inequality $\sqrt{JSD(p_1||p_3)} \le \sqrt{JSD(p_1||p_2)} + \sqrt{JSD(p_2||p_3)}$, we demonstrate that $\sqrt{JSD}$ is a valid metric. 
+        
+        According to Endres and Schindelin (2003), the terms in the Jensen-Shannon divergence can be expressed using the following integral identity for any $p, q > 0$:
+        \[
+        p \log \frac{2p}{p+q} + q \log \frac{2q}{p+q} = \int_{0}^{\infty} \frac{(p - q)^2}{(p+t)(q+t)(p+q+2t)} dt
+        \]
+        Summing over all discrete states $x$, the JSD becomes:
+        \[
+        JSD(p||q) = \frac{1}{2} \sum_x \int_{0}^{\infty} \frac{(p(x) - q(x))^2}{(p(x)+t)(q(x)+t)(p(x)+q(x)+2t)} dt
+        \]
+        Because the integrand is scaled by a strictly positive weight $(p(x) - q(x))^2$, this integral representation proves that $JSD(p||q)$ is a negative definite kernel. Consequently, it corresponds to the squared Euclidean distance in some Hilbert space $\mathcal{H}$, such that $JSD(p||q) = \|\Phi(p) - \Phi(q)\|_{\mathcal{H}}^2$ for some feature map $\Phi$.
+        
+        Therefore, $\sqrt{JSD(p||q)}$ is the Euclidean distance $\|\Phi(p) - \Phi(q)\|_{\mathcal{H}}$, which inherently satisfies the Minkowski inequality (triangle inequality):
+        \[
+        \|\Phi(p_1) - \Phi(p_3)\|_{\mathcal{H}} \le \|\Phi(p_1) - \Phi(p_2)\|_{\mathcal{H}} + \|\Phi(p_2) - \Phi(p_3)\|_{\mathcal{H}}
+        \]
+        Substituting back the distance yields:
+        \[
+        \sqrt{JSD(p_1||p_3)} \le \sqrt{JSD(p_1||p_2)} + \sqrt{JSD(p_2||p_3)}.
+        \]
+
+    \end{enumerate}
 }
 
 \solution{
-    By the fundamental theorem of calculus:
-    \[
-    f(y) = f(x) + \int_{0}^{1} \nabla f\!\big(x+t(y-x)\big)^T (y-x) \, dt.
-    \]
-    Subtracting $f(x) + \nabla f(x)^T(y-x)$ from both sides:
-    \[
-    f(y) - f(x) - \nabla f(x)^T(y-x) = \int_{0}^{1} \big[\nabla f\!\big(x+t(y-x)\big) - \nabla f(x)\big]^T (y-x) \, dt.
-    \]
-    By Cauchy--Schwarz and the Lipschitz condition $\|\nabla f(u) - \nabla f(v)\| \le L\|u-v\|$:
-    \begin{align*}
-    \big|\big[\nabla f\!\big(x+t(y-x)\big) - \nabla f(x)\big]^T (y-x)\big|
-    &\le \|\nabla f\!\big(x+t(y-x)\big) - \nabla f(x)\| \cdot \|y-x\| \\
-    &\le Lt\|y-x\|^2.
-    \end{align*}
-    Therefore:
-    \[
-    f(y) - f(x) - \nabla f(x)^T(y-x) \le \int_{0}^{1} Lt\|y-x\|^2 \, dt = \frac{L}{2}\|y-x\|^2.
-    \]
-    Rearranging: $f(y) \le f(x) + \nabla f(x)^T(y-x) + \frac{L}{2}\|y-x\|^2$. \hfill$\square$
+    \begin{enumerate}
+        \item Using KR duality, we have:
+        \[
+        W(p, q) = \sup_{\|f\|_L \le 1} \left( \mathbb{E}_{x \sim p}[f(x)] - \mathbb{E}_{x \sim q}[f(x)] \right).
+        \]
+        Let \(f^*\) be the optimal function achieving the supremum. Then:
+        \[
+        W(p, q) = \mathbb{E}_{x \sim p}[f^*(x)] - \mathbb{E}_{x \sim q}[f^*(x)].
+        \]
+        consider another distribution \(r\). We can write:
+        \[
+        W(p, r) = \sup_{\|f\|_L \le 1} \left( \mathbb{E}_{x \sim p}[f(x)] - \mathbb{E}_{x \sim r}[f(x)] \right) \ge \mathbb{E}_{x \sim p}[f^*(x)] - \mathbb{E}_{x \sim r}[f^*(x)],
+        \]
+        and
+        \[
+        W(r, q) = \sup_{\|f\|_L \le 1} \left( \mathbb{E}_{x \sim r}[f(x)] - \mathbb{E}_{x \sim q}[f(x)] \right) \ge \mathbb{E}_{x \sim r}[f^*(x)] - \mathbb{E}_{x \sim q}[f^*(x)].
+        \]
+        Adding these two inequalities gives:
+        \[
+        W(p, r) + W(r, q) \ge \mathbb{E}_{x \sim p}[f^*(x)] - \mathbb{E}_{x \sim r}[f^*(x)] + \mathbb{E}_{x \sim r}[f^*(x)] - \mathbb{E}_{x \sim q}[f^*(x)] = W(p, q).
+        \]
+            Thus, we have shown that \(W(p, q) \le W(p, r) + W(r, q)\), proving the triangle inequality for the Wasserstein distance.
+        \item Let's consider the Wasserstein distance between \(p_x\) and \(p_{x+\epsilon}\), choosing a simple \(\gamma^*\) that transports mass from \(x\) to \(x + \epsilon\):
+        \[W(p_x, p_{x+\epsilon}) \le \sum_{x} \int_{\epsilon} p(x) p(\epsilon) \|x - (x + \epsilon)\|_2 d\epsilon = \int_{\epsilon} p(\epsilon) \|\epsilon\|_2 d\epsilon\]
+        Namely the expected value of \(\|\epsilon\|_2\) under the distribution \(p(\epsilon)\). Using Cauthy Schwarz inequality, we have:
+        \[
+        \int_{\epsilon} p(\epsilon) \|\epsilon\|_2 d\epsilon \le \sqrt{\int_{\epsilon} p(\epsilon) d\epsilon} \cdot \sqrt{\int_{\epsilon} p(\epsilon) \|\epsilon\|_2^2 d\epsilon} = \sqrt{\mathbb{E}_{\epsilon \sim p(\epsilon)}[\|\epsilon\|_2^2]}.
+        \]
+        Bring them together, we have:
+        \[
+        W(p_x, p_{x+\epsilon}) \le \sqrt{\mathbb{E}_{\epsilon \sim p(\epsilon)}[\|\epsilon\|_2^2]}=V^{\frac{1}{2}}
+        \]
+        \item 
+    \end{enumerate}
 }
 
-\solution{
-    With $\eta = \frac{1}{L}$, the update is $x_{k+1} = x_k - \frac{1}{L}\nabla f(x_k)$.
-
-    \textbf{Step 1: Descent per iteration.}
-    By the descent lemma with $y = x_{k+1}$:
-    \[
-    f(x_{k+1}) \le f(x_k) - \frac{1}{L}\|\nabla f(x_k)\|^2 + \frac{L}{2}\cdot\frac{1}{L^2}\|\nabla f(x_k)\|^2
-    = f(x_k) - \frac{1}{2L}\|\nabla f(x_k)\|^2.
-    \]
-
-    \textbf{Step 2: Gradient lower bound via strong convexity.}
-    Since $f$ is $\mu$-strongly convex, $f(x^\star) \ge f(x) + \nabla f(x)^T(x^\star - x) + \frac{\mu}{2}\|x-x^\star\|^2$. Since the later two terms are at least $-\|\nabla f(x)\|\cdot\|x-x^\star\| + \frac{\mu}{2}\|x-x^\star\|^2$, the minimum is attained at $\|x-x^\star\| = \frac{\|\nabla f(x)\|}{\mu}$, giving:
-    \[
-    \|\nabla f(x)\|^2 \ge 2\mu\big(f(x) - f(x^\star)\big).
-    \]
-
-    \textbf{Step 3: Linear convergence in function value.}
-    Combining Steps 1 and 2:
-    \[
-    f(x_{k+1}) - f(x^\star) \le \left(1-\frac{\mu}{L}\right)\big(f(x_k)-f(x^\star)\big).
-    \]
-    Recursively: $f(x_k)-f(x^\star) \le \left(1-\frac{\mu}{L}\right)^k\!\big(f(x_0)-f(x^\star)\big)$.
-
-    \textbf{Step 4: Convert to distance.}
-    By $L$-smoothness: $f(x_0)-f(x^\star) \le \frac{L}{2}\|x_0-x^\star\|^2 = \frac{L}{2}R^2$.
-    By strong convexity: $\|x_k-x^\star\|^2 \le \frac{2}{\mu}\big(f(x_k)-f(x^\star)\big)$. Hence:
-    \[
-    \|x_k - x^\star\|^2 \le \frac{L}{\mu}\!\left(1-\frac{\mu}{L}\right)^k R^2.
-    \]
-
-    \textbf{Step 5: Iteration count.}
-    For $\|x_k-x^\star\|\le\epsilon$, it suffices that $\frac{L}{\mu}(1-\frac{\mu}{L})^k R^2 \le \epsilon^2$, i.e.,
-    \[
-    k \ge \frac{1}{\log\!\frac{1}{1-\mu/L}}\;\log\frac{LR^2}{\mu\epsilon^2}.
-    \]
-    Since $\log\frac{1}{1-x}\ge x$ for $x\in(0,1)$, we have $\frac{1}{\log\frac{1}{1-\mu/L}}\le\frac{L}{\mu}$. Therefore:
-    \[
-    k = O\!\left(\frac{L}{\mu}\log\frac{R}{\epsilon}\right). \hfill\square
-    \]
-}
-
-\solution{
-    \textbf{Gradient Descent with Momentum.}
-
-    First, the derivative of $f(x)$ is:
-    \[
-    f'(x) = \begin{cases}
-    25x & \text{if } x < 1, \\
-    x + 24 & \text{if } 1 \le x < 2, \\
-    25x - 24 & \text{if } x \ge 2.
-    \end{cases}
-    \]
-    Note that $f'$ is continuous (both pieces give $f'(1)=25$ and $f'(2)=26$), and the global minimum is at $x^* = 0$.
-
-    The update rule is $x_{k+1} = x_k - \eta f'(x_k) + \beta(x_k - x_{k-1})$ with $\eta = \frac{1}{9}$, $\beta = \frac{4}{9}$, $x_0 = 3.3$, and $x_{-1} = x_0$ (zero initial momentum).
-
-    \medskip
-    \textbf{Step 1: Compute the first few iterates.}
-
-    $k=0$: $x_0 = 3.3 \ge 2$, so $f'(3.3) = 25(3.3)-24 = 58.5$.
-    \[
-    x_1 = 3.3 - \tfrac{1}{9}(58.5) + 0 = 3.3 - 6.5 = -3.2.
-    \]
-
-    $k=1$: $x_1 = -3.2 < 1$, so $f'(-3.2) = -80$.
-    \[
-    x_2 = -3.2 - \tfrac{1}{9}(-80) + \tfrac{4}{9}(-3.2 - 3.3) = -3.2 + \tfrac{80}{9} - \tfrac{26}{9} = -3.2 + 6 = 2.8.
-    \]
-
-    $k=2$: $x_2 = 2.8 \ge 2$, so $f'(2.8) = 46$.
-    \[
-    x_3 = 2.8 - \tfrac{46}{9} + \tfrac{4}{9}(2.8+3.2) = 2.8 - \tfrac{46}{9} + \tfrac{24}{9} = \tfrac{14}{5} - \tfrac{22}{9} = \tfrac{16}{45} \approx 0.356.
-    \]
-
-    The iterates oscillate wildly and do not approach $x^* = 0$.
-
-    \medskip
-    \textbf{Step 2: A stable 3-periodic orbit exists.}
-
-    We look for a cycle $a \mapsto b \mapsto c \mapsto a$ with $a < 1$, $b < 1$, $c \ge 2$, so $f'(a)=25a$, $f'(b)=25b$, $f'(c)=25c-24$. Substituting into the update rule:
-    \begin{align*}
-    b &= a - \tfrac{25a}{9} + \tfrac{4(a-c)}{9} = \tfrac{-12a - 4c}{9}, \\
-    c &= b - \tfrac{25b}{9} + \tfrac{4(b-a)}{9} = \tfrac{-12b - 4a}{9}, \\
-    a &= c - \tfrac{25c-24}{9} + \tfrac{4(c-b)}{9} = \tfrac{-12c + 24 - 4b}{9}.
-    \end{align*}
-    This gives the linear system:
-    \[
-    \begin{cases}
-    12a + 9b + 4c = 0, \\
-    4a + 12b + 9c = 0, \\
-    9a + 4b + 12c = 24.
-    \end{cases}
-    \]
-    From the first two equations: $b = -\frac{23}{27}c$ and $a = \frac{11}{36}c$. Substituting into the third gives $\frac{1225}{108}c = 24$, so $c = \frac{2592}{1225}$. The unique solution is:
-    \[
-    a = \frac{792}{1225} \approx 0.647, \quad
-    b = -\frac{2208}{1225} \approx -1.802, \quad
-    c = \frac{2592}{1225} \approx 2.116.
-    \]
-    One verifies $a < 1$, $b < 1$, $c \ge 2$, confirming that these three points form a valid 3-periodic orbit under the momentum update.
-
-    \medskip
-    \textbf{Step 3: The 3-cycle is locally stable (attracting).}
-
-    The momentum update as a 2D map $T\colon (x_k, x_{k-1}) \mapsto (x_{k+1}, x_k)$ has Jacobian
-    \[
-    J = \begin{pmatrix} -\frac{4}{3} & -\frac{4}{9} \\ 1 & 0 \end{pmatrix}
-    \]
-    in both regions $x<1$ and $x\ge 2$ (since both have slope $f''=25$). The characteristic polynomial $\lambda^2 + \frac{4}{3}\lambda + \frac{4}{9} = 0$ gives a repeated eigenvalue $\lambda = -\frac{2}{3}$.
-
-    The Jacobian of the 3-fold composition $T^3$ at the cycle therefore has eigenvalue $\lambda^3 = -\frac{8}{27}$, with $\left|\lambda^3\right| = \frac{8}{27} < 1$. Hence the 3-cycle is \textbf{locally asymptotically stable}: nearby orbits are attracted to it.
-
-    \medskip
-    \textbf{Conclusion.} Starting from $x_0 = 3.3$, the iterates are captured by the stable 3-periodic orbit $\left\{\frac{792}{1225},\; -\frac{2208}{1225},\; \frac{2592}{1225}\right\}$. Since none of these points equals the minimizer $x^* = 0$, gradient descent with momentum \textbf{does not converge}.
-}
-
-\solution{
-    Let $e_k = \|x_k - x^*\|$. Define $d_k = C e_k$. Then:
-    \[
-    d_{k+1} = Ce_{k+1} \le C\cdot Ce_k^2 = (Ce_k)^2 = d_k^2.
-    \]
-    By induction: $d_k \le d_0^{2^k} = (C\delta)^{2^k}$, so:
-    \[
-    e_k = \frac{d_k}{C} \le \frac{1}{C}(C\delta)^{2^k}.
-    \]
-    Since $0 < C < 1$ and $\delta$ can be chosen small enough that $C\delta < 1$, the error converges super-exponentially to 0. For $e_k \le \epsilon$:
-    \[
-    \frac{1}{C}(C\delta)^{2^k} \le \epsilon \;\Longrightarrow\; (C\delta)^{2^k} \le C\epsilon.
-    \]
-    Taking logarithms (note $\log(C\delta)<0$):
-    \[
-    2^k \ge \frac{\log(1/(C\epsilon))}{\log(1/(C\delta))}
-    \;\Longrightarrow\;
-    k \ge \log_2\!\left(\frac{\log(1/(C\epsilon))}{\log(1/(C\delta))}\right).
-    \]
-    Therefore the required number of iterations is $k = O\!\big(\log\log(1/\epsilon)\big)$. \hfill$\square$
-}
-
-\solution{
-    The Newton update is $x_{k+1} = x_k - [\nabla^2 f(x_k)]^{-1}\nabla f(x_k)$. Since $\nabla f(x^\star)=0$:
-    \[
-    x_{k+1} - x^\star = (x_k - x^\star) - [\nabla^2 f(x_k)]^{-1}\!\big(\nabla f(x_k) - \nabla f(x^\star)\big).
-    \]
-    By the fundamental theorem of calculus:
-    \[
-    \nabla f(x_k)-\nabla f(x^\star) = \left(\int_0^1 \nabla^2 f\!\big(x^\star + t(x_k-x^\star)\big)\,dt\right)(x_k-x^\star).
-    \]
-    Substituting:
-    \[
-    x_{k+1}-x^\star = [\nabla^2 f(x_k)]^{-1}\!\int_0^1 \!\big[\nabla^2 f(x_k) - \nabla^2 f\!\big(x^\star\!+t(x_k\!-\!x^\star)\big)\big]\,dt\;\cdot(x_k-x^\star).
-    \]
-    Let $M$ be the Lipschitz constant of $\nabla^2 f$. Then:
-    \[
-    \big\|\nabla^2 f(x_k) - \nabla^2 f\!\big(x^\star+t(x_k-x^\star)\big)\big\| \le M(1-t)\|x_k-x^\star\|.
-    \]
-    Since $f$ is $\mu$-strongly convex, $\|[\nabla^2 f(x_k)]^{-1}\|\le 1/\mu$. Taking norms:
-    \[
-    \|x_{k+1}-x^\star\| \le \frac{1}{\mu}\int_0^1 M(1-t)\,dt\cdot\|x_k-x^\star\|^2 = \frac{M}{2\mu}\|x_k-x^\star\|^2.
-    \]
-    This is \textbf{quadratic convergence} with constant $C=\frac{M}{2\mu}$. Convergence is guaranteed when $\|x_0-x^\star\|<\frac{2\mu}{M}$, which holds by the ``sufficiently close'' assumption. \hfill$\square$
-}
-
-\solution{
-    For $l\ge 2$, we have $Z^l_{ij}=\sum_{k=1}^{h_l}W^l_{ik}X^l_{kj}$ where $X^l=\max(0,Z^{l-1})$.
-
-    Since $W^l$ and $X^l$ are independent, elements of $W^l$ are i.i.d.\ with $\mathbb{E}[W^l_{ik}]=0$, and elements of $X^l$ are i.i.d.:
-    \[
-    \mathrm{Var}(Z^l_{ij}) = h_l \cdot \mathrm{Var}(W^l)\cdot\mathbb{E}\!\big[(X^l_{kj})^2\big].
-    \]
-    (Cross terms vanish since $\mathbb{E}[W^l_{ik}]=0$ and the $W^l_{ik}$ are independent.)
-
-    Now $X^l_{kj}=\max(0,Z^{l-1}_{kj})$. Since $Z^{l-1}_{kj}=\sum_m W^{l-1}_{km}X^{l-1}_{mj}$ where $W^{l-1}_{km}$ are zero-mean Gaussian and independent of $X^{l-1}$, negating all $W^{l-1}_{km}$ negates $Z^{l-1}_{kj}$ without changing the distribution. Hence $Z^{l-1}_{kj}$ is \textbf{symmetric about zero}, so:
-    \[
-    \mathbb{E}\!\big[\max(0,Z^{l-1}_{kj})^2\big]
-    = \mathbb{E}\!\big[(Z^{l-1}_{kj})^2\cdot\mathbf{1}_{Z^{l-1}_{kj}>0}\big]
-    = \tfrac{1}{2}\,\mathrm{Var}(Z^{l-1}_{ij}).
-    \]
-    Substituting:
-    \[
-    \mathrm{Var}(Z^l_{ij}) = h_l\cdot\mathrm{Var}(W^l)\cdot\tfrac{1}{2}\,\mathrm{Var}(Z^{l-1}_{ij}).
-    \]
-    For variance preservation $\mathrm{Var}(Z^l_{ij})=\mathrm{Var}(Z^{l-1}_{ij})$, we need:
-    \[
-    \tfrac{1}{2}\,h_l\cdot\mathrm{Var}(W^l)=1
-    \quad\Longrightarrow\quad
-    \boxed{\mathrm{Var}(W^l)=\frac{2}{h_l}}.  \hfill\square
-    \]
-}
 
 \solution{
     Used Claude (AI assistant by Anthropic) in the following capacities:
