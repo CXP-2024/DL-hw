@@ -163,3 +163,10 @@ $$y(b, o, h, w) = \text{bias}(o) + \sum_{c=0}^{C_{in}-1} \sum_{m=0}^{k_H-1} \sum
           # weight shape: (out_channels, in_channels, kernel_h, kernel_w)
           # grad_input shape: (batch_size, in_channels, in_h, in_w)
   ```
+
+## Generative AI Usage Disclosure
+
+I used Generative AI (GitHub Copilot / Gemini) during this project. Specifically, I used it to:
+- Learn about and understand NumPy usage examples and methods (like `np.einsum`, `np.where`, etc.).
+- Get explanations for related concepts in deep learning and backpropagation.
+- Assist in understanding the mathematical derivations of gradients for the backward passes.

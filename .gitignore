@@ -5,6 +5,7 @@
 *data/
 *.zip
 .claude/
+*.pth
 .vscode/
 test/
 checkpoints/
