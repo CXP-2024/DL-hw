@@ -12,6 +12,9 @@
 
 6. 最终提交的zip文件按照下列目录结构排布，注意不需要上传MnistInceptionV3.pth文件。
 
+补充：MnistInceptionV3.pth模型下载链接（Google Drive）：
+https://drive.google.com/file/d/1lJPrajxzD5iuw0xVQdM3Q-6d86zdsEpH/view?usp=sharing
+
 
 
 ```
