@@ -19,6 +19,7 @@ mnist = torchvision.datasets.MNIST(download=False, train=True, root="./data")
 
 data_transform = transforms.Compose([
     transforms.Resize((299, 299)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.ToTensor(),
     transforms.Lambda(lambda x: x.repeat(3, 1, 1)),
     transforms.Normalize((mnist.data.float().mean() / 255, ),
@@ -46,7 +47,7 @@ class MnistInceptionV3(nn.Module):
     def __init__(self, in_channels=3):
         super(MnistInceptionV3, self).__init__()
 
-        self.model = models.inception_v3(pretrained=True)
+        self.model = models.inception_v3(pretrained=False)
 
         # Change the output layer to output 10 classes instead of 1000 classes
         num_ftrs = self.model.fc.in_features

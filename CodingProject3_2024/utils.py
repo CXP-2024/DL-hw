@@ -23,7 +23,7 @@ def save_model(save_path,
 
 
 def load_model(load_path):
-    checkpoint = torch.load(load_path)
+    checkpoint = torch.load(load_path, weights_only=False)
     return (
         checkpoint['model'],
         checkpoint.get('optimizer', None),
