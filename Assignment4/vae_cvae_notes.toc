@@ -1,0 +1,26 @@
+\contentsline {section}{\numberline {1}Background: Latent Variable Models}{2}{section.1}%
+\contentsline {section}{\numberline {2}Variational Autoencoder (VAE)}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Overall Architecture}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Model Specification}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Evidence Lower Bound (ELBO)}{3}{subsection.2.3}%
+\contentsline {paragraph}{Interpretation of each term (Figure\nobreakspace {}\ref {fig:elbo-terms}).}{3}{figure.caption.6}%
+\contentsline {subsection}{\numberline {2.4}The Reparameterization Trick}{4}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Closed-Form KL for Gaussians}{4}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Graphical Model}{4}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}Training Algorithm}{5}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Generation (Sampling)}{5}{subsection.2.8}%
+\contentsline {section}{\numberline {3}Conditional VAE (CVAE)}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Motivation}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Overall Architecture}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Model Specification}{6}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}ELBO Derivation for CVAE}{6}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Graphical Model}{7}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Training Algorithm}{7}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Conditional Generation}{7}{subsection.3.7}%
+\contentsline {section}{\numberline {4}VAE vs.\ CVAE: Side-by-Side Comparison}{8}{section.4}%
+\contentsline {subsection}{\numberline {4.1}When to Use Which?}{8}{subsection.4.1}%
+\contentsline {section}{\numberline {5}Common Challenges and Solutions}{9}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Posterior Collapse}{9}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Blurry Samples}{9}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}The $\beta $-VAE Trade-off}{9}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Summary}{10}{section.6}%
