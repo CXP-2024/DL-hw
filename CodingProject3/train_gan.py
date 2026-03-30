@@ -52,7 +52,80 @@ def train(
 
     # YOUR CODE BEGIN.
 
-    raise NotImplementedError()
+    from torch.utils.data import DataLoader
+    from tqdm import tqdm
+
+    batch_size = 64
+    lr_g = 2e-4
+    lr_d = 7e-4
+    n_epochs = 80
+    latent_dim = generator.latent_dim
+
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, num_workers=4,
+        pin_memory=torch.accelerator.is_available(), drop_last=True
+    )
+
+    optimizer_g = torch.optim.Adam(generator.parameters(), lr=lr_g, betas=(0.0, 0.9))
+    optimizer_d = torch.optim.Adam(discriminator.parameters(), lr=lr_d, betas=(0.0, 0.9))
+
+    # Hinge loss for stable training with spectral norm
+    def d_hinge_loss(d_real, d_fake):
+        return torch.relu(1.0 - d_real).mean() + torch.relu(1.0 + d_fake).mean()
+
+    def g_hinge_loss(d_fake):
+        return -d_fake.mean()
+
+    epoch_pbar = tqdm(range(n_epochs), desc="Total", unit="epoch")
+    for epoch in epoch_pbar:
+        total_d_loss = 0.0
+        total_g_loss = 0.0
+        n_batches = 0
+
+        pbar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{n_epochs}", leave=False)
+        for images, labels in pbar:
+            bs = images.size(0)
+            images = images.to(DEVICE)
+            labels = labels.to(DEVICE)
+
+            real_images = images * 2 - 1
+
+            # ---------------------
+            # Train Discriminator
+            # ---------------------
+            optimizer_d.zero_grad()
+
+            d_real = discriminator(real_images, labels)
+
+            z = torch.randn(bs, latent_dim, device=DEVICE)
+            fake_images = generator(z, labels).detach()
+            d_fake = discriminator(fake_images, labels)
+
+            d_loss = d_hinge_loss(d_real, d_fake)
+            d_loss.backward()
+            optimizer_d.step()
+
+            # ---------------------
+            # Train Generator
+            # ---------------------
+            optimizer_g.zero_grad()
+
+            z = torch.randn(bs, latent_dim, device=DEVICE)
+            fake_images = generator(z, labels)
+            d_fake = discriminator(fake_images, labels)
+
+            g_loss = g_hinge_loss(d_fake)
+            g_loss.backward()
+            optimizer_g.step()
+
+            total_d_loss += d_loss.item()
+            total_g_loss += g_loss.item()
+            n_batches += 1
+            pbar.set_postfix(D=f"{d_loss.item():.3f}", G=f"{g_loss.item():.3f}")
+
+        avg_d = total_d_loss / n_batches
+        avg_g = total_g_loss / n_batches
+        epoch_pbar.set_postfix(D=f"{avg_d:.3f}", G=f"{avg_g:.3f}")
 
     # YOUR CODE END.
 

@@ -8,7 +8,17 @@ class CustomEBMModel(nn.Module):
 
         # YOUR CODE BEGIN.
 
-        raise NotImplementedError()
+        # Wider MLP with Swish activations
+        self.net = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(784, 256),
+            nn.SiLU(),
+            nn.Linear(256, 256),
+            nn.SiLU(),
+            nn.Linear(256, 256),
+            nn.SiLU(),
+            nn.Linear(256, 1),
+        )
 
         # YOUR CODE END.
 
@@ -23,7 +33,7 @@ class CustomEBMModel(nn.Module):
 
         # YOUR CODE BEGIN.
 
-        raise NotImplementedError()
+        return self.net(x)
 
         # YOUR CODE END.
 
@@ -46,6 +56,23 @@ class CustomEBMModel(nn.Module):
 
         # YOUR CODE BEGIN.
 
-        raise NotImplementedError()
+        n_steps = 80
+        step_size = 0.015
+
+        x = corrupted_images.clone().detach()
+
+        for _ in range(n_steps):
+            x.requires_grad_(True)
+            energy = self.forward(x).sum()
+            energy.backward()
+            grad = x.grad.detach()
+
+            with torch.no_grad():
+                x = x - step_size * grad
+                x = torch.where(mask, corrupted_images, x)
+                x = x.clamp(0, 1)
+                x = x.detach()
+
+        return x
 
         # YOUR CODE END.
