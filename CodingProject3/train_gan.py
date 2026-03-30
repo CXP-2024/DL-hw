@@ -53,7 +53,6 @@ def train(
     # YOUR CODE BEGIN.
 
     from torch.utils.data import DataLoader
-    from tqdm import tqdm
 
     batch_size = 64
     lr_g = 2e-4
@@ -76,14 +75,12 @@ def train(
     def g_hinge_loss(d_fake):
         return -d_fake.mean()
 
-    epoch_pbar = tqdm(range(n_epochs), desc="Total", unit="epoch")
-    for epoch in epoch_pbar:
+    for epoch in range(n_epochs):
         total_d_loss = 0.0
         total_g_loss = 0.0
         n_batches = 0
 
-        pbar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{n_epochs}", leave=False)
-        for images, labels in pbar:
+        for images, labels in dataloader:
             bs = images.size(0)
             images = images.to(DEVICE)
             labels = labels.to(DEVICE)
@@ -121,11 +118,11 @@ def train(
             total_d_loss += d_loss.item()
             total_g_loss += g_loss.item()
             n_batches += 1
-            pbar.set_postfix(D=f"{d_loss.item():.3f}", G=f"{g_loss.item():.3f}")
 
         avg_d = total_d_loss / n_batches
         avg_g = total_g_loss / n_batches
-        epoch_pbar.set_postfix(D=f"{avg_d:.3f}", G=f"{avg_g:.3f}")
+        if (epoch + 1) % 10 == 0 or epoch == 0:
+            logger.info(f"Epoch {epoch+1}/{n_epochs}, D_loss: {avg_d:.4f}, G_loss: {avg_g:.4f}")
 
     # YOUR CODE END.
 
