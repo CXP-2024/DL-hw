@@ -1,0 +1,13 @@
+[project]
+name = "deep-learning-coding-project-4"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.3.0",
+    "pillow>=12.1.1",
+    "pyyaml>=6.0.3",
+    "torch>=2.11.0",
+    "tqdm>=4.67.3",
+    "trl>=0.24.0",
+    "unsloth>=2026.3.11",
+]
