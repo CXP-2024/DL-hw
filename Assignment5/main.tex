@@ -1,0 +1,224 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tikz}
+
+\newcounter{placeholderCount}
+\newcommand{\placeholder}[1]{{
+    \stepcounter{placeholderCount}
+    \color{red} [#1]
+}}
+
+\newcounter{solutionCount}
+\newcommand{\solution}[1]{
+    \stepcounter{solutionCount}
+    \paragraph{Solution \thesolutionCount.}
+    {
+        #1
+    }
+}
+
+\title{
+    Deep Learning (Spring 2026) \\
+    Solution for Assignment 5
+}
+\author{
+    Pan Changxun
+    \\
+    2024011323
+}
+
+\begin{document}
+
+\maketitle
+
+%% Problem 1 (Dequantization bound, 30 pts)
+\solution{
+    We want to show $\mathcal{L}(\theta) \leq \mathbb{E}_{x \sim p_{\mathrm{data}}(x)}[\log p(x)]$.
+
+    By definition:
+    \[
+      \mathcal{L}(\theta) = \mathbb{E}_{x \sim p_{\mathrm{data}}} \mathbb{E}_{u \sim \mathrm{Uniform}[0,1)^d} [\log \hat{p}(x + u)].
+    \]
+
+    Since $p(x) = \int_{[0,1)^d} \hat{p}(x + u) \, du$, and the uniform distribution over $[0,1)^d$ has density $1$, we can write:
+    \[
+      p(x) = \mathbb{E}_{u \sim \mathrm{Uniform}[0,1)^d}[\hat{p}(x + u)].
+    \]
+
+    By Jensen's inequality, since $\log$ is a concave function:
+    \[
+      \mathbb{E}_{u}[\log \hat{p}(x + u)] \leq \log \mathbb{E}_{u}[\hat{p}(x + u)] = \log p(x).
+    \]
+
+    Taking expectation over $x \sim p_{\mathrm{data}}(x)$ on both sides:
+    \[
+      \mathbb{E}_{x \sim p_{\mathrm{data}}} \mathbb{E}_{u}[\log \hat{p}(x + u)] \leq \mathbb{E}_{x \sim p_{\mathrm{data}}}[\log p(x)].
+    \]
+
+    The left-hand side is exactly $\mathcal{L}(\theta)$, so:
+    \[
+      \mathcal{L}(\theta) \leq \mathbb{E}_{x \sim p_{\mathrm{data}}(x)}[\log p(x)].
+    \]
+    $\hfill\blacksquare$
+}
+
+%% Problem 2 (Autoregressive Flow, 30 pts)
+\solution{
+    To show that $T$ is a valid normalizing flow, we need to verify two properties:
+    \begin{enumerate}
+        \item $T$ is invertible (i.e., there exists a bijection between $u$ and $x$).
+        \item The Jacobian determinant of $T$ can be computed efficiently.
+    \end{enumerate}
+
+    \textbf{(1) Invertibility.}
+
+    The forward transformation is defined recursively as:
+    \[
+      x_i = \mu_i(x_{<i}) + \exp(\alpha_i(x_{<i})) \cdot u_i, \quad i = 1, 2, \ldots, L.
+    \]
+
+    We can invert this to recover $u$ from $x$:
+    \[
+      u_i = \frac{x_i - \mu_i(x_{<i})}{\exp(\alpha_i(x_{<i}))}, \quad i = 1, 2, \ldots, L.
+    \]
+
+    Since $\exp(\alpha_i(x_{<i})) > 0$ for all $i$, each $u_i$ is uniquely determined given $x_1, \ldots, x_i$. The inverse can be computed sequentially: first $u_1$ from $x_1$, then $u_2$ from $x_1, x_2$, and so on. Therefore, $T$ is a bijection.
+
+    \textbf{(2) Tractable Jacobian determinant.}
+
+    The Jacobian matrix $J = \frac{\partial x}{\partial u}$ has entries:
+    \[
+      J_{ij} = \frac{\partial x_i}{\partial u_j}.
+    \]
+
+    Since $x_i = \mu_i(x_{<i}) + \exp(\alpha_i(x_{<i})) \cdot u_i$ and $x_i$ depends on $u_1, \ldots, u_{i-1}$ only through $x_1, \ldots, x_{i-1}$ (which are computed from $u_1, \ldots, u_{i-1}$), and directly on $u_i$:
+    \begin{itemize}
+        \item For $j > i$: $x_i$ does not depend on $u_j$, so $J_{ij} = 0$.
+        \item For $j = i$: $\frac{\partial x_i}{\partial u_i} = \exp(\alpha_i(x_{<i}))$.
+    \end{itemize}
+
+    Thus, $J$ is a \textbf{lower triangular} matrix with diagonal entries $\exp(\alpha_i(x_{<i}))$. The determinant of a triangular matrix is the product of its diagonal entries:
+    \[
+      \det(J) = \prod_{i=1}^{L} \exp(\alpha_i(x_{<i})) = \exp\left(\sum_{i=1}^{L} \alpha_i(x_{<i})\right).
+    \]
+
+    The log-absolute-determinant is therefore:
+    \[
+      \log |\det(J)| = \sum_{i=1}^{L} \alpha_i(x_{<i}),
+    \]
+    which can be computed in $O(L)$ time.
+
+    \textbf{(3) Resulting density.}
+
+    By the change-of-variables formula, the density of $x = T(u)$ is:
+    \begin{align}
+      p(x) &= p_U(T^{-1}(x)) \cdot |\det(J^{-1})| \nonumber \\
+      &= p_U(u) \cdot \prod_{i=1}^{L} \frac{1}{\exp(\alpha_i(x_{<i}))} \nonumber \\
+      &= \prod_{i=1}^{L} \mathcal{N}(u_i \mid 0, 1) \cdot \frac{1}{\exp(\alpha_i(x_{<i}))} \nonumber \\
+      &= \prod_{i=1}^{L} \frac{1}{\exp(\alpha_i(x_{<i}))} \cdot \frac{1}{\sqrt{2\pi}} \exp\left(-\frac{u_i^2}{2}\right). \nonumber
+    \end{align}
+
+    Substituting $u_i = \frac{x_i - \mu_i(x_{<i})}{\exp(\alpha_i(x_{<i}))}$:
+    \begin{align}
+      p(x) &= \prod_{i=1}^{L} \frac{1}{\exp(\alpha_i(x_{<i})) \sqrt{2\pi}} \exp\left(-\frac{(x_i - \mu_i(x_{<i}))^2}{2\exp(\alpha_i(x_{<i}))^2}\right) \nonumber \\
+      &= \prod_{i=1}^{L} \mathcal{N}\left(x_i \mid \mu_i(x_{<i}), \exp(\alpha_i(x_{<i}))^2\right). \nonumber
+    \end{align}
+
+    This recovers exactly the autoregressive factorization $p(x) = \prod_{i=1}^{L} p(x_i | x_{<i})$ with Gaussian conditionals, confirming that $T$ is a valid normalizing flow. $\hfill\blacksquare$
+}
+
+%% Problem 3 (PixelCNN, 30 pts)
+\solution{
+    \begin{enumerate}
+        \item \textbf{Sawtooth-shaped receptive fields from masked convolutions.}
+
+        Consider a $k \times k$ masked convolution kernel where the mask $m$ zeros out all entries below the center row, and on the center row zeros out entries to the right of (and including) the center pixel. For a $5 \times 5$ kernel, this is the mask shown in Figure~2 of the problem.
+
+        \textbf{After one layer:} The receptive field of the output pixel at position $(r, c)$ is exactly the set of input pixels covered by the mask, i.e., all pixels in the rows above $(r, c)$ within the kernel footprint, plus the pixels to the left of $(r, c)$ on the same row.
+
+        \textbf{After stacking multiple layers:} Consider the growth of the receptive field as layers are stacked. Let the kernel size be $k \times k$.
+
+        \begin{itemize}
+            \item \emph{Vertical growth:} In the upward direction, the receptive field grows by $\lfloor k/2 \rfloor$ rows per layer, since the mask includes $\lfloor k/2 \rfloor$ rows above the center.
+            \item \emph{Horizontal growth (upper rows):} For the rows strictly above the current row, the mask includes all $k$ columns (the full width of the kernel). Thus, the receptive field expands by $\lfloor k/2 \rfloor$ columns to the left \emph{and} $\lfloor k/2 \rfloor$ columns to the right per layer.
+            \item \emph{Horizontal growth (current row):} On the current row, the mask only includes columns to the left of center, so the receptive field expands by $\lfloor k/2 \rfloor$ columns to the left per layer, but \emph{does not grow to the right} on the same row.
+        \end{itemize}
+
+        After $n$ layers, the receptive field on the current row extends $n \lfloor k/2 \rfloor$ pixels to the left, while on rows above, it extends $n \lfloor k/2 \rfloor$ pixels both left and right. However, the vertical extent is also $n \lfloor k/2 \rfloor$ rows.
+
+        As a result, the boundary of the receptive field forms a \textbf{sawtooth} (staircase) shape: for each row above the current pixel, the right boundary of the receptive field shifts one step to the right (since upper rows inherit wider horizontal coverage from the unmasked upper portion of the kernel), but the current row's right boundary lags behind. This creates the characteristic sawtooth pattern shown in Figure~1a.
+
+        Specifically, if we index the row offset as $\Delta r$ (with $\Delta r = 0$ being the current row and $\Delta r > 0$ going upward), the right boundary of the receptive field at row offset $\Delta r$ is approximately at column offset $+\Delta r \cdot \lfloor k/2 \rfloor / n$ relative to the center, creating the stepped diagonal boundary.
+
+        \item \textbf{Removing the blind spot.}
+
+        The blind spot arises because the masked convolution on the current row can only see pixels to the left, preventing information from the upper-right region from reaching the current pixel through the same-row path.
+
+        The solution, proposed by Gated PixelCNN (van den Oord et al., 2016), is to split the computation into two streams: a \textbf{vertical stack} and a \textbf{horizontal stack}.
+
+        Denote:
+        \begin{itemize}
+            \item $x$: input feature map.
+            \item $w_v$: vertical convolution kernel (unmasked in full rows above the center row, including the center row itself; all columns below center row are zero).
+            \item $m_v$: vertical mask -- ones for all rows up to and including the center row, zeros below.
+            \item $w_h$: horizontal convolution kernel ($1 \times k$ kernel, masked to only include the current position and positions to its left).
+            \item $m_h$: horizontal mask -- a $1 \times k$ mask with ones for columns left of and including center.
+            \item $W_{vh}$: a $1 \times 1$ convolution that feeds information from the vertical stack to the horizontal stack.
+        \end{itemize}
+
+        The per-layer computation is:
+
+        \textbf{Step 1 -- Vertical stack:}
+        \[
+            v = \mathrm{conv}(m_v \cdot w_v, \; x)
+        \]
+        This uses a vertically-masked kernel that sees all pixels in rows above and including the center row (across the full width). The output is then \textbf{shifted down by one row} so that position $(r,c)$ in the vertical stack output only contains information from rows strictly above $r$, preserving the autoregressive property.
+
+        \textbf{Step 2 -- Horizontal stack with vertical input:}
+        \[
+            h = \mathrm{conv}(m_h \cdot w_h, \; x) + W_{vh} \cdot v
+        \]
+        The horizontal stack uses a $1 \times k$ masked convolution that only sees pixels to the left on the same row. It receives a $1 \times 1$ convolution of the (shifted) vertical stack output as additional input, which carries full-width information from all rows above.
+
+        \textbf{Why this removes the blind spot:}
+        \begin{itemize}
+            \item The vertical stack sees all columns in rows above the current pixel (no horizontal masking restriction in upper rows), so the upper-right region (the former ``blind spot'') is fully captured.
+            \item The vertical-to-horizontal connection ($W_{vh} \cdot v$) feeds this information into the horizontal stack, which also has left-context from the current row.
+            \item The downward shift of the vertical stack output ensures that the pixel at position $(r,c)$ never conditions on itself or any pixel below/right of it, maintaining the autoregressive ordering.
+        \end{itemize}
+
+        Optionally, residual connections can be added to the horizontal stack:
+        \[
+            h_{\mathrm{out}} = h + x_h
+        \]
+        where $x_h$ is the horizontal stack input from the previous layer.
+    \end{enumerate}
+}
+
+%% Problem 4 (AI Usage Disclosure, 10 pts)
+\solution{
+    Used Claude (AI assistant by Anthropic) in the following capacities:
+    \begin{itemize}
+        \item \textbf{Solution ideation:} Brainstorming approaches and generating initial ideas for problem-solving strategies, particularly for structuring mathematical proofs and derivations.
+        \item \textbf{English grammar and writing:} Polishing and refining the English writing throughout the solutions to improve clarity, coherence, and academic tone.
+        \item \textbf{\LaTeX{} formatting:} Optimizing typesetting and layout of mathematical expressions, tables, and document structure for better readability and presentation.
+        \item \textbf{Result verification:} Cross-checking the correctness of intermediate computations, final answers, and logical consistency of proofs.
+    \end{itemize}
+    All final solutions were reviewed and verified by the author.
+}
+
+\ifnum\value{placeholderCount}>0
+    \vfill
+    \begin{center}
+        \color{red} \framebox{\textbf{WARNING: PLEASE REMOVE ALL PLACEHOLDERS BEFORE SUBMISSION}}
+    \end{center}
+\fi
+
+\end{document}
