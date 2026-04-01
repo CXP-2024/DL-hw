@@ -139,23 +139,46 @@
     \begin{enumerate}
         \item \textbf{Sawtooth-shaped receptive fields from masked convolutions.}
 
-        Consider a $k \times k$ masked convolution kernel where the mask $m$ zeros out all entries below the center row, and on the center row zeros out entries to the right of (and including) the center pixel. For a $5 \times 5$ kernel, this is the mask shown in Figure~2 of the problem.
+        We use the $5 \times 5$ masked kernel from Figure~2 as a concrete example, with half-width $h = \lfloor 5/2 \rfloor = 2$. The mask $m$ is:
+        \[
+        m = \begin{pmatrix}
+        1 & 1 & 1 & 1 & 1 \\
+        1 & 1 & 1 & 1 & 1 \\
+        1 & 1 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0 \\
+        0 & 0 & 0 & 0 & 0
+        \end{pmatrix}.
+        \]
 
-        \textbf{After one layer:} The receptive field of the output pixel at position $(r, c)$ is exactly the set of input pixels covered by the mask, i.e., all pixels in the rows above $(r, c)$ within the kernel footprint, plus the pixels to the left of $(r, c)$ on the same row.
-
-        \textbf{After stacking multiple layers:} Consider the growth of the receptive field as layers are stacked. Let the kernel size be $k \times k$.
-
+        This mask has two distinct regions:
         \begin{itemize}
-            \item \emph{Vertical growth:} In the upward direction, the receptive field grows by $\lfloor k/2 \rfloor$ rows per layer, since the mask includes $\lfloor k/2 \rfloor$ rows above the center.
-            \item \emph{Horizontal growth (upper rows):} For the rows strictly above the current row, the mask includes all $k$ columns (the full width of the kernel). Thus, the receptive field expands by $\lfloor k/2 \rfloor$ columns to the left \emph{and} $\lfloor k/2 \rfloor$ columns to the right per layer.
-            \item \emph{Horizontal growth (current row):} On the current row, the mask only includes columns to the left of center, so the receptive field expands by $\lfloor k/2 \rfloor$ columns to the left per layer, but \emph{does not grow to the right} on the same row.
+            \item \emph{Upper rows} (rows above center): all 5 columns are 1 --- the kernel sees the \textbf{full width}.
+            \item \emph{Center row}: only the 2 columns to the left of center are 1 --- the kernel only sees \textbf{left neighbors}.
+            \item \emph{Lower rows}: all 0 --- completely invisible.
         \end{itemize}
 
-        After $n$ layers, the receptive field on the current row extends $n \lfloor k/2 \rfloor$ pixels to the left, while on rows above, it extends $n \lfloor k/2 \rfloor$ pixels both left and right. However, the vertical extent is also $n \lfloor k/2 \rfloor$ rows.
+        \textbf{After one layer} ($n=1$): The receptive field (RF) of the output pixel at position $(r, c)$ is:
+        \begin{itemize}
+            \item Rows $r{-}2$ and $r{-}1$: columns $[c{-}2, \, c{+}2]$ (full width, 5 pixels each).
+            \item Row $r$: columns $[c{-}2, \, c{-}1]$ (only 2 pixels to the left).
+        \end{itemize}
+        The right boundary jumps from $c{+}2$ (at row $r{-}1$) to $c{-}1$ (at row $r$), an abrupt step of 3 columns.
 
-        As a result, the boundary of the receptive field forms a \textbf{sawtooth} (staircase) shape: for each row above the current pixel, the right boundary of the receptive field shifts one step to the right (since upper rows inherit wider horizontal coverage from the unmasked upper portion of the kernel), but the current row's right boundary lags behind. This creates the characteristic sawtooth pattern shown in Figure~1a.
+        \textbf{After two layers} ($n=2$): Each position in layer~2 applies the same masked kernel to the layer-1 output. The RF of $(r,c)$ in the original input is the union of 1-layer RFs of all positions that layer~2 reads. The result is:
+        \begin{itemize}
+            \item Rows $r{-}4$ and $r{-}3$: right boundary at $c{+}4$ (full symmetric growth).
+            \item Rows $r{-}2$ and $r{-}1$: right boundary at approximately $c{+}2$ (reduced rightward extent).
+            \item Row $r$: right boundary at $c{-}3$ (only leftward growth on the current row).
+        \end{itemize}
 
-        Specifically, if we index the row offset as $\Delta r$ (with $\Delta r = 0$ being the current row and $\Delta r > 0$ going upward), the right boundary of the receptive field at row offset $\Delta r$ is approximately at column offset $+\Delta r \cdot \lfloor k/2 \rfloor / n$ relative to the center, creating the stepped diagonal boundary.
+        \textbf{General pattern after $n$ layers:} The asymmetry accumulates with depth. The right boundary of the RF exhibits a \textbf{sawtooth} (staircase) shape:
+        \begin{itemize}
+            \item On \emph{upper rows} of the mask ($h = 2$ rows at a time for a $5\times 5$ kernel), the right boundary remains \emph{flat} (same rightward extent) for $h$ consecutive rows, forming a ``tooth.''
+            \item Then it \emph{drops} by $h$ columns as we move down to the next group of rows.
+            \item On the \emph{current row}, the right boundary is far to the left of center, since information on the same row can only propagate leftward.
+        \end{itemize}
+
+        This periodic pattern of ``flat plateau $\to$ step down $\to$ flat plateau $\to$ step down'' is the characteristic sawtooth shape shown in Figure~1a. The upper-right region that is never covered by the RF constitutes the \textbf{blind spot}.
 
         \item \textbf{Removing the blind spot.}
 
