@@ -1,0 +1,624 @@
+% !TEX program = xelatex
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% ── 字体 & 中文 ──────────────────────────────────────
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans Mono CJK SC}
+
+% ── 数学 ─────────────────────────────────────────────
+\usepackage{amsmath, amssymb, bm}
+
+% ── 图形 ─────────────────────────────────────────────
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc,
+                decorations.pathreplacing, fit, backgrounds, shadows}
+
+% ── 表格 ─────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{colortbl}
+\usepackage{array}
+
+% ── Beamer 主题 ──────────────────────────────────────
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% ── 颜色定义 ─────────────────────────────────────────
+\definecolor{vaecol}{HTML}{2980B9}
+\definecolor{vqcol}{HTML}{C0392B}
+\definecolor{greencol}{HTML}{27AE60}
+\definecolor{orangecol}{HTML}{E67E22}
+\definecolor{purplecol}{HTML}{8E44AD}
+\definecolor{darkcol}{HTML}{2C3E50}
+\definecolor{lightbg}{HTML}{ECF0F1}
+\definecolor{lightblue}{HTML}{D6EAF8}
+\definecolor{lightred}{HTML}{FADBD8}
+\definecolor{titlebg}{HTML}{1A1A2E}
+
+\setbeamercolor{frametitle}{fg=darkcol, bg=white}
+\setbeamercolor{title}{fg=white, bg=titlebg}
+\setbeamercolor{normal text}{fg=darkcol}
+\setbeamercolor{itemize item}{fg=vaecol}
+\setbeamercolor{itemize subitem}{fg=orangecol}
+\setbeamerfont{frametitle}{size=\Large, series=\bfseries}
+
+% ── 自定义框 ─────────────────────────────────────────
+\newcommand{\vaebox}[1]{%
+  \begin{tikzpicture}[baseline=(X.base)]
+    \node[fill=lightblue, rounded corners=3pt, inner sep=5pt] (X) {#1};
+  \end{tikzpicture}}
+\newcommand{\vqbox}[1]{%
+  \begin{tikzpicture}[baseline=(X.base)]
+    \node[fill=lightred, rounded corners=3pt, inner sep=5pt] (X) {#1};
+  \end{tikzpicture}}
+
+% ── TikZ 样式 ────────────────────────────────────────
+\tikzset{
+  block/.style={rectangle, rounded corners=5pt, minimum height=1cm,
+                minimum width=2cm, text=white, font=\bfseries,
+                drop shadow={shadow xshift=1pt, shadow yshift=-1pt, opacity=0.3}},
+  vaeb/.style={block, fill=vaecol},
+  vqb/.style={block, fill=vqcol},
+  decb/.style={block, fill=darkcol},
+  genb/.style={block, fill=greencol},
+  orb/.style={block, fill=orangecol},
+  purb/.style={block, fill=purplecol},
+  arr/.style={-{Stealth[length=6pt]}, thick, color=#1},
+  arr/.default={darkcol!60},
+  dasharr/.style={-{Stealth[length=6pt]}, thick, dashed, color=#1},
+  dasharr/.default={greencol},
+  labelnode/.style={font=\small, text=darkcol},
+  infobox/.style={rectangle, rounded corners=4pt, draw=#1, fill=#1!8,
+                  text width=5.5cm, inner sep=6pt, font=\small},
+}
+
+% ═════════════════════════════════════════════════════
+\begin{document}
+
+% ── Slide 1: 封面 ───────────────────────────────────
+{
+\setbeamercolor{background canvas}{bg=titlebg}
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture, overlay]
+  % 装饰圆
+  \foreach \i in {1,...,12}{
+    \pgfmathsetmacro{\cx}{rand*7}
+    \pgfmathsetmacro{\cy}{rand*4}
+    \pgfmathsetmacro{\r}{0.1+rand*0.3}
+    \fill[vaecol, opacity=0.08] (\cx, \cy) circle (\r);
+  }
+  \foreach \i in {1,...,10}{
+    \pgfmathsetmacro{\cx}{rand*7}
+    \pgfmathsetmacro{\cy}{rand*4}
+    \pgfmathsetmacro{\s}{0.1+rand*0.25}
+    \fill[vqcol, opacity=0.08, rounded corners=2pt]
+      (\cx-\s, \cy-\s) rectangle (\cx+\s, \cy+\s);
+  }
+\end{tikzpicture}
+\vspace{1.5cm}
+\begin{center}
+  {\Huge\bfseries\color{white} VQ-VAE \;\;vs\;\; VAE}\\[12pt]
+  {\large\color{white!70} Vector Quantized VAE\;\; vs\;\; Variational Autoencoder}\\[20pt]
+  {\color{vqcol}\rule{6cm}{1.5pt}}\\[14pt]
+  {\large\color{white!80}\itshape --- 从连续到离散的潜在空间之旅 ---}\\[24pt]
+  {\color{white!60} Deep Learning $\cdot$ Spring 2026}
+\end{center}
+\end{frame}
+}
+
+% ── Slide 2: 总览表格 ───────────────────────────────
+\begin{frame}{一张表看懂 VAE vs VQ-VAE}
+\vspace{-2pt}
+\centering
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{>{\bfseries\color{darkcol}}l
+                >{\color{vaecol}}c
+                >{\color{vqcol}}c}
+\toprule
+\rowcolor{lightbg}
+\textcolor{darkcol}{对比维度}
+  & \textcolor{vaecol}{\textbf{VAE}}
+  & \textcolor{vqcol}{\textbf{VQ-VAE}} \\
+\midrule
+潜在空间
+  & 连续 (Continuous)
+  & 离散 (Discrete) \\
+\rowcolor{lightbg}
+潜在变量
+  & $z \sim \mathcal{N}(\mu, \sigma^2)$
+  & $z_q = e_k$ \;(码本向量) \\
+先验分布
+  & $\mathcal{N}(0, I)$
+  & Uniform Categorical \\
+\rowcolor{lightbg}
+梯度传播
+  & 重参数化技巧
+  & Straight-Through Est. \\
+正则项
+  & KL 散度
+  & Commitment Loss \\
+\rowcolor{lightbg}
+生成质量
+  & 偏模糊
+  & 更清晰 \\
+生成方式
+  & 直接采样先验
+  & 需额外先验模型 \\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+% ── Slide 3: VAE 架构 ───────────────────────────────
+\begin{frame}{VAE 架构}
+\centering
+\begin{tikzpicture}[node distance=1.2cm, scale=0.92, every node/.style={scale=0.92}]
+  % 节点
+  \node[vaeb, minimum width=1.8cm] (input) {Input $x$};
+  \node[vaeb, right=1.5cm of input, minimum width=2.2cm] (enc) {Encoder $q_\phi$};
+  \node[vaeb, above right=0.3cm and 1.2cm of enc, minimum width=1.4cm, fill=vaecol!80] (mu) {$\mu$};
+  \node[vaeb, below right=0.3cm and 1.2cm of enc, minimum width=1.4cm, fill=vaecol!80] (sig) {$\sigma$};
+  \node[genb, right=2.8cm of enc, minimum width=2.4cm, minimum height=1.2cm] (reparam)
+    {\begin{tabular}{c}\small 重参数化\\ $z{=}\mu{+}\sigma{\cdot}\varepsilon$\end{tabular}};
+  \node[decb, right=1.5cm of reparam, minimum width=2.2cm] (dec) {Decoder $p_\theta$};
+
+  % 箭头
+  \draw[arr] (input) -- (enc);
+  \draw[arr=vaecol] (enc.east) ++(0,0.15) -- (mu.west);
+  \draw[arr=vaecol] (enc.east) ++(0,-0.15) -- (sig.west);
+  \draw[arr=greencol] (mu.east) -- ++(0.4,0) |- ([yshift=3pt]reparam.west);
+  \draw[arr=greencol] (sig.east) -- ++(0.4,0) |- ([yshift=-3pt]reparam.west);
+  \draw[arr] (reparam) -- (dec);
+
+  % epsilon
+  \node[above=0.5cm of reparam, font=\itshape\color{greencol}] (eps)
+    {$\varepsilon \sim \mathcal{N}(0, I)$};
+  \draw[arr=greencol] (eps) -- (reparam);
+
+  % 潜在空间标注
+  \node[below=1.0cm of reparam, fill=lightblue, rounded corners=4pt,
+        inner sep=5pt, font=\bfseries\color{vaecol}] (zlabel)
+    {连续潜在空间 $z \in \mathbb{R}^d$};
+
+  % 损失函数
+  \node[below=2.0cm of enc, xshift=2.5cm,
+        draw=vaecol, rounded corners=5pt, fill=vaecol!5,
+        inner sep=8pt, font=\normalsize, text=darkcol] (loss)
+    {$\displaystyle \mathcal{L}_{\text{VAE}}
+     = \underbrace{\mathbb{E}_{q(z|x)}[\log p(x|z)]}_{\text{\color{greencol}重构项}}
+     - \underbrace{D_{\text{KL}}\!\big(q(z|x)\,\|\,p(z)\big)}_{\text{\color{vqcol}KL 正则项}}$};
+\end{tikzpicture}
+\end{frame}
+
+% ── Slide 4: VQ-VAE 架构 ────────────────────────────
+\begin{frame}{VQ-VAE 架构}
+\centering
+\begin{tikzpicture}[node distance=1cm, scale=0.88, every node/.style={scale=0.88}]
+  % 主流程
+  \node[vqb, minimum width=1.6cm] (input) {Input $x$};
+  \node[vqb, right=1cm of input, minimum width=2cm] (enc) {Encoder};
+  \node[vqb, right=1cm of enc, minimum width=1.6cm, fill=vqcol!75] (ze) {$z_e(x)$};
+  \node[orb, right=1cm of ze, minimum width=2cm,
+        minimum height=1.2cm] (quant) {\begin{tabular}{c}\small 量化\\[-2pt] \small Nearest\\[-2pt] \small Neighbor\end{tabular}};
+  \node[vqb, right=1cm of quant, minimum width=1.6cm, fill=vqcol!90] (zq) {$z_q$};
+  \node[decb, right=1cm of zq, minimum width=2cm] (dec) {Decoder};
+
+  % 箭头
+  \draw[arr] (input) -- (enc);
+  \draw[arr=vqcol] (enc) -- (ze);
+  \draw[arr] (ze) -- (quant);
+  \draw[arr] (quant) -- (zq);
+  \draw[arr] (zq) -- (dec);
+
+  % 码本
+  \node[above=1.2cm of quant, draw=orangecol, thick, rounded corners=5pt,
+        fill=orangecol!8, minimum width=3cm, minimum height=2cm] (cb) {};
+  \node[above=0.05cm of cb, font=\bfseries\color{orangecol}] {Codebook};
+  % 码本向量可视化
+  \foreach \i/\j/\hi in {-0.8/0.3/0, -0.2/0.3/0, 0.4/0.3/1,
+                          -0.8/-0.2/0, -0.2/-0.2/0, 0.4/-0.2/0,
+                          -0.8/-0.7/0, -0.2/-0.7/0, 0.4/-0.7/0}{
+    \ifnum\hi=1
+      \fill[vqcol] ([xshift=\i cm, yshift=\j cm]cb.center) rectangle
+                   ++(0.4, 0.35);
+    \else
+      \fill[orangecol!40] ([xshift=\i cm, yshift=\j cm]cb.center) rectangle
+                          ++(0.4, 0.35);
+    \fi
+  }
+  \node[right=0.2cm of cb, font=\bfseries\color{vqcol}] {$e_k$};
+  \draw[arr=orangecol] (cb) -- (quant);
+
+  % straight-through 标注
+  \node[below=0.5cm of quant, font=\small\itshape\color{purplecol}] (st)
+    {straight-through estimator};
+  \draw[dasharr=purplecol] ([yshift=-2pt]zq.south) -- ++(0,-0.3) -|
+    ([yshift=-2pt]ze.south);
+  \node[below=0.25cm of st, font=\scriptsize\color{purplecol}]
+    {$\nabla_{z_e} \approx \nabla_{z_q}$};
+
+  % 离散空间标注
+  \node[below=2.2cm of quant, fill=lightred, rounded corners=4pt,
+        inner sep=5pt, font=\bfseries\color{vqcol}] (dlabel)
+    {离散潜在空间 (码本索引 $k \in \{1,\dots,K\}$)};
+
+  % 损失
+  \node[below=3.3cm of quant,
+        draw=vqcol, rounded corners=5pt, fill=vqcol!5,
+        inner sep=7pt, font=\small, text=darkcol] (loss)
+    {$\displaystyle \mathcal{L}_{\text{VQ}}
+     = \underbrace{\|x - \hat{x}\|^2}_{\text{\color{greencol}重构}}
+     + \underbrace{\|\operatorname{sg}[z_e] - e_k\|^2}_{\text{\color{orangecol}码本更新}}
+     + \beta\underbrace{\|z_e - \operatorname{sg}[e_k]\|^2}_{\text{\color{purplecol}commitment}}$};
+\end{tikzpicture}
+\end{frame}
+
+% ── Slide 5: 潜在空间可视化 ─────────────────────────
+\begin{frame}{潜在空间对比：连续 vs 离散}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\centering
+{\large\bfseries\color{vaecol} VAE: 连续高斯空间}\\[8pt]
+\begin{tikzpicture}[scale=0.75]
+  % 坐标轴
+  \draw[-{Stealth}, thick, darkcol!50] (-3.5,0) -- (3.5,0) node[right]{\small $z_1$};
+  \draw[-{Stealth}, thick, darkcol!50] (0,-3.5) -- (0,3.5) node[above]{\small $z_2$};
+  % 等高线圆
+  \foreach \r/\op in {1/0.25, 2/0.15, 3/0.08}{
+    \draw[vaecol, thick, opacity=\op, fill=vaecol, fill opacity=\op]
+      (0,0) circle (\r);
+  }
+  % 散点 (手动放置代表性采样点)
+  \foreach \x/\y in {0.3/0.5, -0.7/0.2, 0.1/-0.4, -0.3/-0.6,
+                     1.2/0.8, -1.0/1.1, 0.8/-1.3, -1.5/-0.5,
+                     1.8/0.2, -0.4/1.7, 0.5/-1.8, -1.2/-1.4,
+                     2.1/-0.9, -1.8/1.3, 0.9/2.0, -2.2/0.1,
+                     0.2/0.1, -0.1/-0.2, 0.6/0.3, -0.5/0.7}{
+    \fill[vaecol!70] (\x, \y) circle (2.5pt);
+  }
+  % 标注
+  \node[below, font=\small\itshape\color{vaecol}] at (0, -3.8)
+    {$z = \mu + \sigma \cdot \varepsilon$，任意点可采样};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.48\textwidth}
+\centering
+{\large\bfseries\color{vqcol} VQ-VAE: 离散码本空间}\\[8pt]
+\begin{tikzpicture}[scale=0.75]
+  % 坐标轴
+  \draw[-{Stealth}, thick, darkcol!50] (-3.5,0) -- (3.5,0) node[right]{\small $z_1$};
+  \draw[-{Stealth}, thick, darkcol!50] (0,-3.5) -- (0,3.5) node[above]{\small $z_2$};
+  % Voronoi 边界 (近似)
+  \foreach \x in {-2, 0, 2}{
+    \draw[darkcol!15, thin] (\x-1, -3.3) -- (\x-1, 3.3);
+  }
+  \foreach \y in {-2, 0, 2}{
+    \draw[darkcol!15, thin] (-3.3, \y-1) -- (3.3, \y-1);
+  }
+  % 码本点
+  \foreach \x/\y in {-2/-2, -2/0, -2/2, 0/-2, 0/0, 0/2, 2/-2, 2/0, 2/2}{
+    \fill[vqcol] (\x, \y) ++(-0.18,-0.18) rectangle ++(0.36,0.36);
+  }
+  % 编码器输出被 snap
+  \foreach \ex/\ey/\qx/\qy in {
+    -1.3/0.4/-2/0, 0.7/-1.5/0/-2, 1.8/0.3/2/0,
+    -0.5/2.3/0/2, -2.4/-1.2/-2/-2, 1.1/1.6/2/2,
+    -1.7/1.8/-2/2, 0.3/0.4/0/0, 2.3/-1.8/2/-2}{
+    \fill[orangecol!60] (\ex, \ey) circle (2pt);
+    \draw[darkcol!25, thin, -{Stealth[length=3pt]}] (\ex, \ey) -- (\qx, \qy);
+  }
+  % 标注
+  \node[below, font=\small\itshape\color{vqcol}] at (0, -3.8)
+    {$z_q = \arg\min_k \|z_e - e_k\|$，只有码本点};
+\end{tikzpicture}
+\end{column}
+\end{columns}
+
+\vspace{8pt}
+\centering
+\begin{tikzpicture}
+  \fill[vqcol] (0,0) ++(-0.12,-0.12) rectangle ++(0.24,0.24);
+  \node[right, font=\small] at (0.2, 0) {码本向量 $e_k$};
+  \fill[orangecol!60] (3, 0) circle (2.5pt);
+  \node[right, font=\small] at (3.2, 0) {编码器输出 $z_e$ (被 snap 到最近码本)};
+\end{tikzpicture}
+\end{frame}
+
+% ── Slide 6: 梯度传播 ───────────────────────────────
+\begin{frame}{梯度传播机制对比}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\centering
+\vaebox{\large\bfseries\color{vaecol} VAE: 重参数化技巧}\\[10pt]
+\begin{tikzpicture}[scale=0.85, every node/.style={scale=0.85}]
+  \node[vaeb, minimum width=2cm] (enc) {Encoder};
+  \node[vaeb, above right=0.4cm and 1cm of enc, minimum width=1.2cm, fill=vaecol!75] (mu) {$\mu$};
+  \node[vaeb, below right=0.4cm and 1cm of enc, minimum width=1.2cm, fill=vaecol!75] (sig) {$\sigma$};
+  \node[genb, right=2.2cm of enc, minimum width=2cm] (z) {$z$};
+  \node[above=0.4cm of z, font=\small\itshape\color{greencol}] (eps) {$\varepsilon \sim \mathcal{N}(0,I)$};
+
+  \draw[arr=vaecol] (enc) -- (mu);
+  \draw[arr=vaecol] (enc) -- (sig);
+  \draw[arr=greencol] (mu) -- (z);
+  \draw[arr=greencol] (sig) -- (z);
+  \draw[arr=greencol] (eps) -- (z);
+
+  % 梯度反传
+  \draw[dasharr=vaecol, line width=1.5pt]
+    ([yshift=-8pt]z.west) -- ([yshift=-8pt]enc.east)
+    node[midway, below, font=\small\color{vaecol}] {$\nabla$ 可反传};
+\end{tikzpicture}
+
+\vspace{10pt}
+\begin{tikzpicture}
+  \node[infobox=vaecol, text width=5.8cm] {
+    \textbf{核心思想：}将随机性移到外部\\[3pt]
+    $z = \mu + \sigma \cdot \varepsilon$ 中 $\varepsilon$ 是常量\\[3pt]
+    $\Rightarrow$ $\frac{\partial z}{\partial \mu} = 1$,\;
+    $\frac{\partial z}{\partial \sigma} = \varepsilon$\\[3pt]
+    \color{greencol}\textbf{梯度畅通无阻 \checkmark}
+  };
+\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.48\textwidth}
+\centering
+\vqbox{\large\bfseries\color{vqcol} VQ-VAE: Straight-Through}\\[10pt]
+\begin{tikzpicture}[scale=0.85, every node/.style={scale=0.85}]
+  \node[vqb, minimum width=1.5cm, fill=vqcol!75] (ze) {$z_e$};
+  \node[orb, right=1cm of ze, minimum width=2cm] (q) {\small argmin};
+  \node[vqb, right=1cm of q, minimum width=1.5cm] (zq) {$z_q$};
+
+  \draw[arr] (ze) -- (q);
+  \draw[arr] (q) -- (zq);
+
+  % 前向
+  \node[above=0.8cm of q, font=\small\bfseries\color{orangecol}] {前向: 走量化};
+
+  % 反向 (straight-through)
+  \draw[dasharr=purplecol, line width=1.5pt]
+    ([yshift=-10pt]zq.west) -- ([yshift=-10pt]ze.east)
+    node[midway, below, font=\small\color{purplecol}] {$\nabla$ 直接复制};
+  \node[below=1cm of q, font=\small\bfseries\color{purplecol}] {反向: 跳过 argmin};
+\end{tikzpicture}
+
+\vspace{10pt}
+\begin{tikzpicture}
+  \node[infobox=vqcol, text width=5.8cm] {
+    \textbf{核心思想：}前向用量化，反向绕过去\\[3pt]
+    argmin 不可微 $\Rightarrow$ 梯度无法流过\\[3pt]
+    Straight-through: $\nabla_{z_e} \approx \nabla_{z_q}$\\[3pt]
+    \color{purplecol}\textbf{近似方法，工程上很有效 \checkmark}
+  };
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ── Slide 7: 损失函数详解 ───────────────────────────
+\begin{frame}{损失函数详解}
+
+% VAE Loss
+\begin{center}
+{\large\bfseries\color{vaecol} VAE Loss}
+\end{center}
+\vspace{-4pt}
+\begin{tikzpicture}
+  \node[draw=vaecol, thick, rounded corners=6pt, fill=lightblue,
+        inner sep=10pt, text width=14cm, align=center] {
+    $\displaystyle \mathcal{L}_{\text{VAE}}
+     = \underbrace{\mathbb{E}_{q(z|x)}[\log p(x|z)]}_{\text{\color{greencol}\bfseries 重构损失：让输出接近输入}}
+     - \underbrace{D_{\text{KL}}\!\big(q(z|x)\,\|\,p(z)\big)}_{\text{\color{vqcol}\bfseries KL 正则：让后验接近先验 $\mathcal{N}(0,I)$}}$
+  };
+\end{tikzpicture}
+
+\vspace{10pt}
+
+% VQ-VAE Loss
+\begin{center}
+{\large\bfseries\color{vqcol} VQ-VAE Loss}
+\end{center}
+\vspace{-4pt}
+\begin{tikzpicture}
+  \node[draw=vqcol, thick, rounded corners=6pt, fill=lightred,
+        inner sep=10pt, text width=14cm, align=center] (vqloss) {
+    $\displaystyle \mathcal{L}_{\text{VQ}}
+     = \underbrace{\|x - \hat{x}\|^2}_{\text{\color{greencol}\bfseries 重构}}
+     + \underbrace{\|\operatorname{sg}[z_e] - e_k\|^2}_{\text{\color{orangecol}\bfseries 码本更新}}
+     + \beta\underbrace{\|z_e - \operatorname{sg}[e_k]\|^2}_{\text{\color{purplecol}\bfseries commitment}}$
+  };
+\end{tikzpicture}
+
+\vspace{6pt}
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\node[infobox=greencol, text width=4cm] {
+  \textbf{\color{greencol}重构损失}\\
+  解码器输出尽量\\接近原始输入
+};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\node[infobox=orangecol, text width=4cm] {
+  \textbf{\color{orangecol}码本损失}\\
+  让码本向量 $e_k$ 靠近\\编码器输出（只更新码本）
+};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\node[infobox=purplecol, text width=4cm] {
+  \textbf{\color{purplecol}Commitment 损失}\\
+  让编码器输出靠近\\码本向量（只更新编码器）
+};
+\end{tikzpicture}
+\end{column}
+\end{columns}
+
+\vspace{4pt}
+\centering
+{\small\itshape\color{darkcol!60}
+$\operatorname{sg}[\cdot]$ = stop-gradient：阻止梯度流过该项，分别更新码本与编码器}
+\end{frame}
+
+% ── Slide 8: 优缺点对比 ─────────────────────────────
+\begin{frame}{优缺点对比}
+\begin{columns}[T]
+\begin{column}{0.47\textwidth}
+\centering
+{\Large\bfseries\color{vaecol} VAE}\\[10pt]
+
+\begin{tikzpicture}
+\node[draw=greencol, thick, rounded corners=5pt, fill=greencol!5,
+      text width=6cm, inner sep=8pt, align=left] {
+  \textbf{\color{greencol} 优点}\\[4pt]
+  $\checkmark$ 理论优美，ELBO 有清晰概率解释\\[2pt]
+  $\checkmark$ 可直接从先验 $p(z)$ 采样生成\\[2pt]
+  $\checkmark$ 潜在空间平滑，支持插值\\[2pt]
+  $\checkmark$ 训练简单稳定
+};
+\end{tikzpicture}
+
+\vspace{8pt}
+\begin{tikzpicture}
+\node[draw=vqcol, thick, rounded corners=5pt, fill=vqcol!5,
+      text width=6cm, inner sep=8pt, align=left] {
+  \textbf{\color{vqcol} 缺点}\\[4pt]
+  $\times$ 生成图像偏模糊（高斯假设）\\[2pt]
+  $\times$ 容易 posterior collapse\\[2pt]
+  $\times$ KL 与重构的平衡困难
+};
+\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.47\textwidth}
+\centering
+{\Large\bfseries\color{vqcol} VQ-VAE}\\[10pt]
+
+\begin{tikzpicture}
+\node[draw=greencol, thick, rounded corners=5pt, fill=greencol!5,
+      text width=6cm, inner sep=8pt, align=left] {
+  \textbf{\color{greencol} 优点}\\[4pt]
+  $\checkmark$ 生成质量更高更清晰\\[2pt]
+  $\checkmark$ 避免 posterior collapse\\[2pt]
+  $\checkmark$ 离散表示适配自回归模型\\[2pt]
+  $\checkmark$ 可扩展至 VQ-VAE-2 多层级
+};
+\end{tikzpicture}
+
+\vspace{8pt}
+\begin{tikzpicture}
+\node[draw=vqcol, thick, rounded corners=5pt, fill=vqcol!5,
+      text width=6cm, inner sep=8pt, align=left] {
+  \textbf{\color{vqcol} 缺点}\\[4pt]
+  $\times$ 不能直接采样，需额外先验模型\\[2pt]
+  $\times$ 码本利用率可能很低\\[2pt]
+  $\times$ 训练更复杂（三项 loss 平衡）
+};
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ── Slide 9: 生成流程对比 ───────────────────────────
+\begin{frame}{生成（推理）流程对比}
+
+\vspace{6pt}
+% VAE
+{\large\bfseries\color{vaecol} VAE：一步到位}\\[6pt]
+\centering
+\begin{tikzpicture}[node distance=0.8cm, scale=0.9, every node/.style={scale=0.9}]
+  \node[vaeb, minimum width=2.2cm] (s1) {$z \sim \mathcal{N}(0, I)$};
+  \node[decb, right=1.5cm of s1, minimum width=2.2cm] (s2) {Decoder};
+  \node[genb, right=1.5cm of s2, minimum width=2.2cm] (s3) {生成 $\hat{x}$};
+  \draw[arr, line width=2pt] (s1) -- (s2);
+  \draw[arr, line width=2pt] (s2) -- (s3);
+  \node[below=0.3cm of s2, font=\small\itshape\color{vaecol}]
+    {从先验采样 $\rightarrow$ 解码，一步完成};
+\end{tikzpicture}
+
+\vspace{16pt}
+% VQ-VAE
+\flushleft
+{\large\bfseries\color{vqcol} VQ-VAE：两阶段}\\[6pt]
+\centering
+\begin{tikzpicture}[node distance=0.6cm, scale=0.9, every node/.style={scale=0.9}]
+  % Stage 1 标注
+  \node[font=\bfseries\color{darkcol}, anchor=west] (t1) at (-1, 1.5)
+    {Stage 1: 训练 VQ-VAE};
+  \node[font=\small\color{darkcol!60}, anchor=west] at (4, 1.5)
+    {--- 学会编码 + 码本 + 解码};
+
+  % Stage 2 标注
+  \node[font=\bfseries\color{darkcol}, anchor=west] (t2) at (-1, 0.6)
+    {Stage 2: 训练先验模型};
+  \node[font=\small\color{darkcol!60}, anchor=west] at (4, 0.6)
+    {--- 用自回归模型学码本索引分布};
+
+  % 生成流程
+  \node[purb, minimum width=2.2cm] (p1) at (0, -0.8) {PixelCNN};
+  \node[right=0.3cm of p1, font=\small\color{darkcol}] (arr1) {};
+  \node[orb, right=1cm of p1, minimum width=2.5cm] (p2) {\small 码本查找 $e_{k_i}$};
+  \node[decb, right=1cm of p2, minimum width=2.2cm] (p3) {Decoder};
+  \node[genb, right=1cm of p3, minimum width=2.2cm] (p4) {生成 $\hat{x}$};
+
+  \draw[arr, line width=2pt] (p1) -- node[above, font=\scriptsize\color{darkcol}] {索引} (p2);
+  \draw[arr, line width=2pt] (p2) -- node[above, font=\scriptsize\color{darkcol}] {$z_q$} (p3);
+  \draw[arr, line width=2pt] (p3) -- (p4);
+
+  \node[below=0.3cm of p2, font=\small\itshape\color{vqcol}]
+    {先验模型采样索引 $\rightarrow$ 查码本 $\rightarrow$ 解码};
+\end{tikzpicture}
+\end{frame}
+
+% ── Slide 10: 总结 ──────────────────────────────────
+{
+\setbeamercolor{background canvas}{bg=titlebg}
+\begin{frame}[plain]
+\vspace{0.8cm}
+\begin{center}
+{\Huge\bfseries\color{white} 总\quad 结}\\[16pt]
+{\color{vqcol}\rule{4cm}{1.5pt}}
+\end{center}
+\vspace{6pt}
+
+\begin{tikzpicture}
+  \foreach \i/\title/\desc/\col in {
+    1/{潜在空间}/{VAE 连续高斯\quad vs\quad VQ-VAE 离散码本}/vaecol,
+    2/{核心机制}/{重参数化技巧\quad vs\quad Straight-Through Estimator}/greencol,
+    3/{损失函数}/{KL 散度正则\quad vs\quad 码本损失 + Commitment 损失}/orangecol,
+    4/{生成方式}/{直接先验采样\quad vs\quad 需额外自回归先验模型}/purplecol,
+    5/{应用趋势}/{VQ-VAE 已成为 DALL-E、Stable Diffusion 等的基础组件}/vqcol%
+  }{
+    \pgfmathsetmacro{\ypos}{5.8 - (\i-1)*1.1}
+    % 序号圆
+    \fill[\col] (1, \ypos) circle (0.35);
+    \node[font=\large\bfseries, text=white] at (1, \ypos) {\i};
+    % 文字
+    \node[anchor=west, font=\large\bfseries, text=white] at (1.6, \ypos+0.15) {\title};
+    \node[anchor=west, font=\small, text=white!75] at (1.6, \ypos-0.25) {\desc};
+  }
+\end{tikzpicture}
+
+\vspace{8pt}
+\begin{center}
+\begin{tikzpicture}
+  \node[rounded corners=6pt, fill=vqcol!20, inner sep=10pt,
+        font=\large\bfseries, text=white] {
+    VAE: 连续 + KL \quad$|$\quad VQ-VAE: 离散 + 码本
+    \quad$\longrightarrow$\quad 各有所长，互为补充
+  };
+\end{tikzpicture}
+\end{center}
+\end{frame}
+}
+
+\end{document}

@@ -1,0 +1,10 @@
+\beamer@sectionintoc {1}{Motivation: Why Do We Need Guidance?}{3}{0}{1}
+\beamer@sectionintoc {2}{Background: Diffusion Models Refresher}{5}{0}{2}
+\beamer@sectionintoc {3}{Classifier Guidance (The Predecessor)}{7}{0}{3}
+\beamer@sectionintoc {4}{Classifier-Free Guidance: The Core Idea}{9}{0}{4}
+\beamer@sectionintoc {5}{Training: How to Get Both Models in One}{12}{0}{5}
+\beamer@sectionintoc {6}{Inference: How CFG Works at Generation Time}{14}{0}{6}
+\beamer@sectionintoc {7}{The Guidance Scale $w$: Effect and Trade-offs}{16}{0}{7}
+\beamer@sectionintoc {8}{Mathematical Derivation}{18}{0}{8}
+\beamer@sectionintoc {9}{Practical Considerations}{20}{0}{9}
+\beamer@sectionintoc {10}{Summary}{22}{0}{10}
