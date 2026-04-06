@@ -1,0 +1,6 @@
+\beamer@sectionintoc {1}{Background: Autoregressive Image Generation}{3}{0}{1}
+\beamer@sectionintoc {2}{PixelCNN: Masked Convolutions}{4}{0}{2}
+\beamer@sectionintoc {3}{Receptive Field \& Sawtooth Pattern}{7}{0}{3}
+\beamer@sectionintoc {4}{The Blind Spot Problem}{10}{0}{4}
+\beamer@sectionintoc {5}{Solution: Gated PixelCNN}{12}{0}{5}
+\beamer@sectionintoc {6}{Summary}{17}{0}{6}
