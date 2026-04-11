@@ -62,19 +62,40 @@ def convert_icon_qa_test_to_conversation(
     return ConversationalLanguageModeling(
         messages=[
             {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "You are a visual question answering assistant. You will be given a question about an image, along with two candidate answer images labeled choice_0.png and choice_1.png. Select the correct choice and put your answer within \\boxed{}. Answer with only choice_0.png or choice_1.png.",
+                    }
+                ],
+            },
+            {
                 "role": "user",
                 "content": [
+                    {
+                        "type": "text",
+                        "text": "Question image:",
+                    },
                     {
                         "type": "image",
                         "image": sample["query_image"],
                     },
                     {
                         "type": "text",
-                        "text": sample["question"],
+                        "text": f"Question: {sample['question']}",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Choice A (choice_0.png):",
                     },
                     {
                         "type": "image",
                         "image": sample["choice_image_0"],
+                    },
+                    {
+                        "type": "text",
+                        "text": "Choice B (choice_1.png):",
                     },
                     {
                         "type": "image",
@@ -82,14 +103,10 @@ def convert_icon_qa_test_to_conversation(
                     },
                     {
                         "type": "text",
-                        "text": f"Choices: {sample['choices']}",
-                    },
-                    {
-                        "type": "text",
-                        "text": r"Put your answer within \boxed{}",
+                        "text": "Which choice is correct? Answer with choice_0.png or choice_1.png inside \\boxed{}.",
                     },
                 ],
-            }
+            },
         ]
     )
 
@@ -135,8 +152,28 @@ def extract_answer(generated_text: str) -> str:
 
     # YOUR CODE BEGIN.
 
+    # Try to find \boxed{...} pattern first
     match = re.search(r"\\boxed\{(.*?)\}", generated_text)
+    if match:
+        answer = match.group(1).strip()
+        # Normalize to expected format
+        if "choice_0" in answer or "0" == answer.strip():
+            return "choice_0.png"
+        if "choice_1" in answer or "1" == answer.strip():
+            return "choice_1.png"
+        return answer
 
-    return match.group(1).strip() if match else ""
+    # Fallback: look for choice_X.png anywhere in the text
+    matches = re.findall(r"choice_[01]\.png", generated_text)
+    if matches:
+        return matches[-1]
+
+    # Fallback: look for "choice 0" or "choice 1" patterns
+    if "choice_0" in generated_text.lower() or "choice a" in generated_text.lower():
+        return "choice_0.png"
+    if "choice_1" in generated_text.lower() or "choice b" in generated_text.lower():
+        return "choice_1.png"
+
+    return ""
 
     # YOUR CODE END.
