@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DL Assignment 6 — 初学者友好全流程讲解</title>
+
+<!-- MathJax 3 -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true,
+    tags: 'ams'
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+<style>
+:root {
+  --bg: #fafafa;
+  --fg: #1a1a1a;
+  --panel: #ffffff;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent2: #7c3aed;
+  --good: #059669;
+  --bad: #dc2626;
+  --warn: #d97706;
+  --border: #e5e7eb;
+  --code-bg: #f3f4f6;
+  --formula-bg: #eff6ff;
+  --note-bg: #fef3c7;
+  --proof-bg: #f0fdf4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --fg: #e5e7eb;
+    --panel: #1e293b;
+    --muted: #94a3b8;
+    --accent: #60a5fa;
+    --accent2: #a78bfa;
+    --good: #34d399;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --border: #334155;
+    --code-bg: #0b1220;
+    --formula-bg: #1e3a8a22;
+    --note-bg: #78350f44;
+    --proof-bg: #064e3b44;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
+  color: var(--fg);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+nav.toc {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 0.88rem;
+}
+
+nav.toc h3 {
+  margin-top: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+nav.toc ul { list-style: none; padding-left: 0; }
+nav.toc li { margin: 0.3rem 0; }
+nav.toc ul ul { padding-left: 1em; font-size: 0.82rem; }
+
+nav.toc a {
+  color: var(--fg);
+  text-decoration: none;
+  display: block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+nav.toc a:hover { background: var(--formula-bg); color: var(--accent); }
+nav.toc a.active { background: var(--formula-bg); color: var(--accent); font-weight: 600; }
+
+main {
+  padding: 2rem 3rem;
+  max-width: 900px;
+  width: 100%;
+}
+
+h1, h2, h3, h4 { line-height: 1.3; }
+h1 {
+  font-size: 2rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 0.3rem;
+}
+.subtitle { color: var(--muted); margin-top: 0; font-size: 1.05rem; }
+
+h2 {
+  font-size: 1.55rem;
+  margin-top: 3rem;
+  padding-top: 0.3rem;
+  border-top: 2px solid var(--border);
+  color: var(--accent);
+}
+h3 { font-size: 1.2rem; margin-top: 2rem; color: var(--accent2); }
+h4 { font-size: 1.02rem; margin-top: 1.5rem; }
+
+p, li { font-size: 1rem; }
+
+code {
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 0.92em;
+}
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+pre code { background: transparent; padding: 0; }
+
+.formula-box {
+  background: var(--formula-bg);
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  border-left: 4px solid var(--accent);
+  overflow-x: auto;
+}
+
+.note {
+  background: var(--note-bg);
+  border-left: 4px solid var(--warn);
+  padding: 0.8rem 1.2rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+.note::before {
+  content: "💡 ";
+  font-weight: bold;
+}
+
+.proof {
+  background: var(--proof-bg);
+  border-left: 4px solid var(--good);
+  padding: 0.8rem 1.2rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.warn-box {
+  background: #fee2e2;
+  border-left: 4px solid var(--bad);
+  padding: 0.8rem 1.2rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+  color: #111;
+}
+@media (prefers-color-scheme: dark) {
+  .warn-box { background: #7f1d1d44; color: var(--fg); }
+}
+
+.widget {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem;
+  margin: 1.5rem 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.widget h4 { margin-top: 0; color: var(--accent); }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.control label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.control input[type="range"] {
+  width: 180px;
+}
+.control .value {
+  font-family: monospace;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+button:hover { opacity: 0.85; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.bars-row {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 200px;
+  padding: 0 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+.bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+}
+th { background: var(--formula-bg); font-weight: 600; }
+
+.arch-svg {
+  display: block;
+  margin: 1rem auto;
+  max-width: 100%;
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid var(--border);
+}
+
+.highlight-acc { color: var(--good); font-weight: 700; }
+.highlight-rej { color: var(--bad); font-weight: 700; }
+.highlight-mu { color: var(--accent); font-weight: 700; }
+.highlight-alpha { color: var(--accent2); font-weight: 700; }
+
+.step-indicator {
+  display: flex;
+  gap: 4px;
+  margin: 0.5rem 0;
+}
+.step-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+.step-dot.active { background: var(--accent); }
+.step-dot.done { background: var(--good); }
+
+.matrix {
+  display: inline-grid;
+  gap: 2px;
+  padding: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.matrix .cell {
+  width: 26px; height: 26px;
+  background: var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  font-family: monospace; font-size: 0.75rem;
+  border-radius: 2px;
+}
+.matrix .cell.zero { background: #f1f5f9; color: var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .matrix .cell.zero { background: #1e293b77; }
+}
+.matrix .cell.diag { background: var(--accent); color: white; font-weight: bold; }
+.matrix .cell.nz { background: var(--formula-bg); color: var(--accent); font-weight: bold; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.toc { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  main { padding: 1rem; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<!-- ============== SIDEBAR TOC ============== -->
+<nav class="toc">
+  <h3>目录</h3>
+  <ul>
+    <li><a href="#intro">前言：怎么读这份讲解</a></li>
+    <li><a href="#p1">Problem 1 · Transformer</a>
+      <ul>
+        <li><a href="#p1-1">1.1 Transformer 架构全景</a></li>
+        <li><a href="#p1-2">1.2 FLOP 是什么</a></li>
+        <li><a href="#p1-3">1.3 自注意力 FLOP 推导</a></li>
+        <li><a href="#p1-4">1.4 FFN FLOP 推导</a></li>
+        <li><a href="#p1-5">1.5 交互：谁更贵</a></li>
+        <li><a href="#p1-6">1.6 真正的瓶颈：内存</a></li>
+        <li><a href="#p1-7">1.7 RNN 的截断 BPTT</a>
+          <ul><li><a href="#p1-7-deep">🔍 BPTT 深入</a></li></ul>
+        </li>
+        <li><a href="#p1-8">1.8 Transformer-XL 做法</a>
+          <ul>
+            <li><a href="#p1-8-mem">🔧 Memory 工程细节</a></li>
+            <li><a href="#p1-8-complexity">📊 复杂度拆解</a></li>
+          </ul>
+        </li>
+        <li><a href="#p1-9">1.9 伪代码逐行解读</a></li>
+      </ul>
+    </li>
+    <li><a href="#p2">Problem 2 · Parallel WaveNet Flow</a>
+      <ul>
+        <li><a href="#p2-1">2.1 什么是归一化流</a></li>
+        <li><a href="#p2-2">2.2 变量替换公式</a></li>
+        <li><a href="#p2-3">2.3 Parallel WaveNet 动机</a>
+          <ul><li><a href="#p2-3-parallel">⚡ "并行" 到底指什么</a></li></ul>
+        </li>
+        <li><a href="#p2-4">2.4 L 层构造</a></li>
+        <li><a href="#p2-5">2.5 可逆性</a></li>
+        <li><a href="#p2-6">2.6 Jacobian 是三角</a></li>
+        <li><a href="#p2-7">2.7 完整 log-likelihood</a></li>
+      </ul>
+    </li>
+    <li><a href="#p3">Problem 3 · Speculative Decoding</a>
+      <ul>
+        <li><a href="#p3-1">3.1 自回归采样的慢</a></li>
+        <li><a href="#p3-2">3.2 投机解码动机</a></li>
+        <li><a href="#p3-3">3.3 接受/拒绝规则</a></li>
+        <li><a href="#p3-4">3.4 关键恒等式</a></li>
+        <li><a href="#p3-5">3.5 单 token 正确性</a></li>
+        <li><a href="#p3-6">3.6 交互：概率核对</a></li>
+        <li><a href="#p3-7">3.7 序列归纳</a></li>
+      </ul>
+    </li>
+    <li><a href="#p4">Problem 4 · AI 声明</a></li>
+    <li><a href="#glossary">符号速查表</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Deep Learning 作业 6 · 全流程讲解</h1>
+<p class="subtitle">为完全零基础写的「每一个公式都告诉你怎么来的」的学习笔记</p>
+
+<!-- ================== INTRO ================== -->
+<section id="intro">
+<h2>前言：怎么读这份讲解</h2>
+
+<p>这份讲解假设你<b>第一次接触 Transformer / 归一化流 / 投机解码</b>。每一道题都按下面的顺序展开：</p>
+
+<ol>
+  <li><b>动机：</b>这个东西是要解决什么问题？</li>
+  <li><b>背景：</b>需要哪些预备知识？用最直白的方式讲清楚。</li>
+  <li><b>推导：</b>一行一行把公式写出来，每一步都告诉你<em>为什么能这么写</em>。</li>
+  <li><b>直觉：</b>用图、用类比让你"看见"这件事。</li>
+  <li><b>回到原题：</b>把答题卡上的答案串起来。</li>
+</ol>
+
+<p>三道题的核心都是同一件事：<b>用更便宜的近似，换取与精确方法一样的结果</b>。</p>
+
+<table>
+<tr><th>题目</th><th>近似的是什么</th><th>节省的是什么</th></tr>
+<tr><td>Problem 1</td><td>把长序列切成短段</td><td>显存 / 计算</td></tr>
+<tr><td>Problem 2</td><td>用并行流替代自回归采样</td><td>推理时间</td></tr>
+<tr><td>Problem 3</td><td>用小模型猜测大模型的 token</td><td>推理时间</td></tr>
+</table>
+
+<p>并且每一种"便宜"方法，都<em>不能破坏正确性</em>——于是我们就需要证明它跟原来等价。</p>
+
+<div class="note">阅读建议：公式和图都要看。不懂就往回翻，或者打开题目的原文 PDF 对照。你可以滑动右边的交互小组件亲自实验。</div>
+</section>
+
+<!-- ======================================================= -->
+<!-- PROBLEM 1 -->
+<!-- ======================================================= -->
+<section id="p1">
+<h2>Problem 1 · Transformer 的复杂度与「截断 BPTT」</h2>
+
+<p><b>题目大意（两问）：</b></p>
+<ol>
+  <li>Transformer 里最贵的是哪一块？</li>
+  <li>对于长序列，RNN 可以用"截断 BPTT"省显存，Transformer 怎么做同样的事情？写伪代码。</li>
+</ol>
+
+<!-- ===================== 1.1 ===================== -->
+<h3 id="p1-1">1.1 Transformer 架构全景</h3>
+
+<p>一个 vanilla Transformer 由若干<b>相同的 Transformer 块</b>堆叠而成。每个块的数据流如下：</p>
+
+<svg class="arch-svg" viewBox="0 0 600 380" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <style>
+    .block { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; }
+    .block-text { font: 600 14px sans-serif; fill: #1e3a8a; text-anchor: middle; }
+    .io { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.5; }
+    .io-text { font: 13px sans-serif; fill: #374151; text-anchor: middle; }
+    .flow { stroke: #2563eb; stroke-width: 2; fill: none; marker-end: url(#arr); }
+    .label { font: 11px monospace; fill: #6b7280; }
+  </style>
+
+  <rect x="200" y="10" width="200" height="30" class="io" rx="4"/>
+  <text x="300" y="30" class="io-text">输入 X  (L × d)</text>
+
+  <rect x="180" y="60" width="240" height="55" class="block" rx="6"/>
+  <text x="300" y="82" class="block-text">Multi-Head Self-Attention</text>
+  <text x="300" y="102" class="block-text" style="font-size:11px">Q, K, V projections + attn</text>
+
+  <rect x="180" y="140" width="240" height="30" class="io" rx="4"/>
+  <text x="300" y="160" class="io-text">Add &amp; LayerNorm</text>
+
+  <rect x="180" y="190" width="240" height="55" class="block" rx="6"/>
+  <text x="300" y="212" class="block-text">Feed-Forward Network</text>
+  <text x="300" y="230" class="block-text" style="font-size:11px">d → 4d → d  两层 MLP</text>
+
+  <rect x="180" y="270" width="240" height="30" class="io" rx="4"/>
+  <text x="300" y="290" class="io-text">Add &amp; LayerNorm</text>
+
+  <rect x="200" y="320" width="200" height="30" class="io" rx="4"/>
+  <text x="300" y="340" class="io-text">输出  (L × d)</text>
+
+  <path class="flow" d="M 300 40 L 300 58"/>
+  <path class="flow" d="M 300 115 L 300 138"/>
+  <path class="flow" d="M 300 170 L 300 188"/>
+  <path class="flow" d="M 300 245 L 300 268"/>
+  <path class="flow" d="M 300 300 L 300 318"/>
+
+  <text x="460" y="95" class="label">贵 ⚠</text>
+  <text x="460" y="220" class="label">也贵</text>
+</svg>
+
+<p>我们关心两处计算：</p>
+<ul>
+  <li><b>自注意力（Self-Attention）</b>：计算 Q, K, V 三个线性投影，计算注意力分数 $QK^\top$ 并 softmax，再乘 $V$，最后用 $W_O$ 投影回来。</li>
+  <li><b>前馈网络（FFN）</b>：两层全连接，中间维度通常放大到 $4d$（所以也写作 $d_{\mathrm{ff}} = 4d$）。</li>
+</ul>
+
+<p>其它组件（LayerNorm、残差连接、dropout）的计算量加起来远远小于这两块，所以我们只比它们俩。</p>
+
+<!-- ===================== 1.2 ===================== -->
+<h3 id="p1-2">1.2 FLOP 是什么，为什么矩阵乘是 $2mnk$</h3>
+
+<p><b>FLOP</b> = Floating Point Operation，一次浮点加法或一次浮点乘法都算 1 个 FLOP。</p>
+
+<p>看一个最简单的例子：矩阵 $A \in \mathbb{R}^{m\times k}$ 乘上 $B \in \mathbb{R}^{k\times n}$ 得到 $C \in \mathbb{R}^{m\times n}$。</p>
+
+<div class="formula-box">
+$$ C_{ij} \;=\; \sum_{t=1}^{k} A_{it} \cdot B_{tj} \qquad (i=1..m,\; j=1..n) $$
+</div>
+
+<p>每一个 $C_{ij}$ 要做：</p>
+<ul>
+  <li>$k$ 次乘法</li>
+  <li>$k-1 \approx k$ 次加法</li>
+</ul>
+<p>所以是 $\approx 2k$ 个 FLOP。总共要算 $mn$ 个这样的 $C_{ij}$，所以：</p>
+<div class="formula-box">
+$$\boxed{\;\text{矩阵乘 } A_{m\times k} \cdot B_{k\times n} \;\approx\; 2\,m\,n\,k \text{ FLOPs}\;}$$
+</div>
+
+<p class="note">很多论文只统计"乘加"（MAC，multiply-accumulate）次数，$m\,n\,k$。两者差一个常数 2，不影响比较"谁更贵"。下面我们用 <b>MAC</b> 记数，写复杂度时省略常数。</p>
+
+<!-- ===================== 1.3 ===================== -->
+<h3 id="p1-3">1.3 一步步算出自注意力的 FLOP</h3>
+
+<p>记序列长度为 $L$，隐藏维度为 $d$。输入 $X \in \mathbb{R}^{L\times d}$。</p>
+
+<p><b>第一步 · 四个线性投影</b>：</p>
+<div class="formula-box">
+$$ Q = X W_Q,\quad K = X W_K,\quad V = X W_V,\qquad \text{（其中每个 } W \in \mathbb{R}^{d\times d}\text{）} $$
+</div>
+<p>每个投影是 $(L\times d) \cdot (d\times d)$，代入公式 $m=L, k=d, n=d$，得 $L d^2$ MAC。</p>
+<p>输出还要一个 $W_O \in \mathbb{R}^{d\times d}$ 投影（最后从多头拼接回 $d$ 维），同样 $Ld^2$。</p>
+<div class="formula-box">
+$$ \text{线性投影合计：}\quad 4 \cdot L\,d^2 $$
+</div>
+
+<p><b>第二步 · 注意力分数 $QK^\top$</b>：</p>
+<p>$Q \in \mathbb{R}^{L\times d}$，$K^\top \in \mathbb{R}^{d\times L}$，所以 $QK^\top \in \mathbb{R}^{L\times L}$。代入公式 $m=L, k=d, n=L$：</p>
+<div class="formula-box">
+$$ Q\,K^\top \;:\; L \cdot L \cdot d \;=\; L^2\,d \text{ MAC} $$
+</div>
+
+<p class="note"><b>注意这里出现了 $L^2$！</b>为什么？因为注意力分数矩阵本身就是 $L\times L$ 的——序列中每一个 token 都要和每一个 token 算一次相似度，$L$ 个 token 两两配对自然是 $L^2$。</p>
+
+<p><b>第三步 · softmax 归一化</b>：对每一行 $L$ 个数做 softmax，这是 $O(L^2)$ 个元素级操作，比矩阵乘小得多，忽略。</p>
+
+<p><b>第四步 · 注意力聚合 $\mathrm{softmax}(\cdot)\, V$</b>：</p>
+<p>$\mathrm{softmax}(QK^\top/\sqrt d) \in \mathbb{R}^{L\times L}$ 乘上 $V \in \mathbb{R}^{L\times d}$，结果是 $L\times d$：</p>
+<div class="formula-box">
+$$ \text{attn} \cdot V \;:\; L \cdot d \cdot L \;=\; L^2\,d \text{ MAC} $$
+</div>
+
+<p><b>自注意力总和：</b></p>
+<div class="formula-box">
+$$ \boxed{\; \text{Attention} \;\approx\; 4\,L\,d^2 \;+\; 2\,L^2\,d \;} $$
+</div>
+
+<!-- ===================== 1.4 ===================== -->
+<h3 id="p1-4">1.4 FFN 的 FLOP</h3>
+
+<p>FFN 就是两个全连接层，中间接一个激活函数：</p>
+<div class="formula-box">
+$$ \mathrm{FFN}(x) = \mathrm{ReLU}(x\,W_1)\,W_2,\quad W_1 \in \mathbb{R}^{d\times 4d},\; W_2 \in \mathbb{R}^{4d\times d} $$
+</div>
+
+<p>对整个序列（$L$ 个 token）作用：</p>
+<ul>
+  <li>第一层 $X \cdot W_1$：$(L\times d)\cdot(d\times 4d) \Rightarrow L \cdot d \cdot 4d = 4Ld^2$</li>
+  <li>第二层 $\cdot W_2$：$(L\times 4d)\cdot(4d\times d) \Rightarrow L \cdot 4d \cdot d = 4Ld^2$</li>
+</ul>
+<div class="formula-box">
+$$ \boxed{\; \text{FFN} \;\approx\; 8\,L\,d^2 \;} $$
+</div>
+
+<!-- ===================== 1.5 ===================== -->
+<h3 id="p1-5">1.5 谁更贵？（交互）</h3>
+
+<p>把两个结果放在一起看：</p>
+<div class="formula-box">
+$$ \text{FFN} : \text{Attention} \;=\; 8Ld^2 \;:\; 4Ld^2 + 2L^2d \;=\; \frac{4d}{2d + L} $$
+</div>
+
+<ul>
+  <li>当 <b>$L \ll d$</b>（短序列，如 $L=64, d=512$）：分母 $\approx 2d$，比值 $\approx 2$。<b>FFN 最贵</b>。</li>
+  <li>当 <b>$L = 2d$</b>：比值 $= 1$。两者打平。</li>
+  <li>当 <b>$L \gg d$</b>（长序列，如 $L = 16{,}000$）：分母 $\approx L$，比值 $\approx 4d/L \to 0$。<b>Attention 碾压</b>。</li>
+</ul>
+
+<div class="widget">
+<h4>📊 交互：拖动 $L, d$ 看哪块更贵</h4>
+<div class="controls">
+  <div class="control">
+    <label>序列长度 $L$ = <span class="value" id="flop-L-val">512</span></label>
+    <input type="range" id="flop-L" min="16" max="16384" value="512" step="16">
+  </div>
+  <div class="control">
+    <label>隐藏维度 $d$ = <span class="value" id="flop-d-val">512</span></label>
+    <input type="range" id="flop-d" min="64" max="4096" value="512" step="64">
+  </div>
+</div>
+<div id="flop-output" style="font-family:monospace; font-size:0.95rem; margin-top:0.5rem"></div>
+<svg id="flop-chart" width="100%" height="220" viewBox="0 0 600 220"></svg>
+</div>
+
+<p><b>结论：题目问「最贵的是哪一块」，答案是 <span class="highlight-mu">自注意力</span>。</b>理由：</p>
+<ol>
+  <li>注意力的核心计算随 $L$ <b>二次增长</b>（$L^2 d$），而 FFN 只随 $L$ 线性增长。</li>
+  <li>现代长上下文场景下 $L$ 远远大于 $d$，二次项必然主导。</li>
+  <li>更关键的是——见下一节——注意力的<b>显存占用</b>同样是 $L^2$。</li>
+</ol>
+
+<!-- ===================== 1.6 ===================== -->
+<h3 id="p1-6">1.6 真正的瓶颈：显存（为什么训练更痛）</h3>
+
+<p>计算只是一方面，训练时还要<b>存下激活值</b>以备反向传播。Attention 的反向传播需要保留 softmax 之后的 $L\times L$ 注意力矩阵：</p>
+
+<table>
+<tr><th>L</th><th>注意力矩阵大小 (float32, 单头)</th><th>×12 层×16 头</th></tr>
+<tr><td>1,024</td><td>4 MB</td><td>~0.75 GB</td></tr>
+<tr><td>4,096</td><td>64 MB</td><td>~12 GB</td></tr>
+<tr><td>16,384</td><td>1 GB</td><td>~192 GB 💥</td></tr>
+</table>
+
+<p>$L$ 翻倍，显存翻<b>四倍</b>。这才是 Transformer 训长序列时真正打爆 GPU 的东西。</p>
+
+<p>题目里"training a vanilla transformer requires a much larger GPU memory"问的就是这件事——而 RNN 的截断 BPTT 恰好是一个处理长序列显存问题的经典技巧，所以第二问就是问：<b>我们能不能把它搬过来？</b></p>
+
+<!-- ===================== 1.7 ===================== -->
+<h3 id="p1-7">1.7 快速回顾：RNN 的 BPTT 与截断</h3>
+
+<p>RNN 按时间递推：</p>
+<div class="formula-box">
+$$ h_t = f(h_{t-1}, x_t) $$
+</div>
+<p>如果序列有 $N$ 步，做 loss 反向传播时梯度要沿着 $h_N \to h_{N-1} \to \cdots \to h_1$ 一路传回去，这叫 <b>BPTT（Backprop Through Time）</b>。整条链都要在显存里。</p>
+
+<p><b>截断 BPTT (Truncated BPTT, TBPTT)</b> 的想法是：</p>
+<ol>
+  <li>把长序列切成若干段，每段长度 $L$。</li>
+  <li>对每一段正向计算，得到段末的 $h$。</li>
+  <li>只在段内反传梯度，段与段之间<b>只传递 $h$ 的数值，不传递梯度</b>（detach / stop_grad）。</li>
+</ol>
+
+<p>效果：</p>
+<ul>
+  <li>✅ 显存只和段长 $L$ 有关，而不是整条 $N$ 有关。</li>
+  <li>❌ 梯度最远只能回传 $L$ 步，远程依赖学不到。</li>
+  <li>✅ 前向 context 依旧能透过 $h$ 传到后面的段，所以<b>推理</b>不丢信息。</li>
+</ul>
+
+<svg class="arch-svg" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#2563eb"/>
+    </marker>
+    <marker id="arr3" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#dc2626"/>
+    </marker>
+  </defs>
+  <style>
+    .seg { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; }
+    .seg-t { font: 600 12px sans-serif; fill: #1e3a8a; text-anchor: middle; }
+    .h { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; }
+    .fwd { stroke: #2563eb; stroke-width: 2; fill: none; marker-end: url(#arr2); }
+    .grad { stroke: #dc2626; stroke-width: 2; fill: none; marker-end: url(#arr3); stroke-dasharray: 4 3; }
+    .cross { stroke: #dc2626; stroke-width: 3; }
+    .lab { font: 11px monospace; fill: #6b7280; }
+  </style>
+
+  <rect x="10" y="60" width="170" height="70" rx="8" class="seg"/>
+  <text x="95" y="100" class="seg-t">Segment 1 (长度 L)</text>
+
+  <rect x="210" y="60" width="170" height="70" rx="8" class="seg"/>
+  <text x="295" y="100" class="seg-t">Segment 2</text>
+
+  <rect x="410" y="60" width="170" height="70" rx="8" class="seg"/>
+  <text x="495" y="100" class="seg-t">Segment 3</text>
+
+  <circle cx="195" cy="95" r="10" class="h"/>
+  <text x="195" y="99" style="font:10px monospace;text-anchor:middle;fill:#78350f">h</text>
+  <circle cx="395" cy="95" r="10" class="h"/>
+  <text x="395" y="99" style="font:10px monospace;text-anchor:middle;fill:#78350f">h</text>
+
+  <path class="fwd" d="M 180 95 L 205 95"/>
+  <path class="fwd" d="M 380 95 L 405 95"/>
+
+  <path class="grad" d="M 295 150 L 95 150"/>
+  <text x="195" y="170" class="lab" style="fill:#dc2626; text-anchor:middle">段内反传 ✓</text>
+  <text x="195" y="45" class="lab" style="text-anchor:middle">stop_grad ✂</text>
+  <line x1="189" y1="78" x2="201" y2="108" class="cross"/>
+  <line x1="201" y1="78" x2="189" y2="108" class="cross"/>
+
+  <text x="495" y="170" class="lab" style="fill:#dc2626; text-anchor:middle">段内反传 ✓</text>
+</svg>
+<p style="text-align:center; color:var(--muted); font-size:0.88rem">蓝色实线 = 前向流；红色虚线 = 梯度流；剪刀 ✂ = 被 stop_grad 切断。</p>
+
+<h4 id="p1-7-deep" style="margin-top:2rem; padding-top:0.8rem; border-top:1px dashed var(--border); color:var(--accent)">🔍 更深入：BPTT 到底怎么"穿越时间"传梯度</h4>
+
+<p>上面说"梯度沿着时间传回去"——但<b>怎么传</b>？拆成 5 步看。</p>
+
+<p><b>第 0 步 · 先回忆普通反向传播。</b>对一个两层网络 $y = W_2\,\sigma(W_1 x)$，loss 对 $W_1$ 的梯度就是链式法则一路乘回去：复合函数求导，没什么神秘的。</p>
+
+<p><b>第 1 步 · RNN 的结构。</b>核心公式只有一行：$h_t = f(h_{t-1}, x_t)$。每一时刻，用 <b>同一个</b> $f$ 把上一步隐状态和当前输入合起来产生新的隐状态。</p>
+
+<p><b>第 2 步 · "展开 (unroll)" 之后就是一个很深的前馈网络。</b></p>
+
+<pre><code>h_0 ──[f]──► h_1 ──[f]──► h_2 ──[f]──► h_3 ──► Loss
+      ▲            ▲            ▲
+      W (同一套参数, 反复用 3 次)</code></pre>
+
+<p>把时间当作"深度"——3 步 RNN 就是一个 3 层的前馈网络，只是所有层<b>共享参数 $W$</b>。</p>
+
+<p><b>第 3 步 · 在展开图上做普通反向传播 = BPTT。</b>参数 $W$ 被用了 3 次，每次都对 loss 有贡献：</p>
+
+<div class="formula-box">
+$$ \frac{\partial \mathcal{L}}{\partial W} \;=\; \underbrace{\frac{\partial\mathcal{L}}{\partial h_3}\cdot\frac{\partial h_3}{\partial W}}_{\text{第 3 步贡献}} \;+\; \underbrace{\frac{\partial\mathcal{L}}{\partial h_3}\cdot\frac{\partial h_3}{\partial h_2}\cdot\frac{\partial h_2}{\partial W}}_{\text{第 2 步贡献}} \;+\; \underbrace{\frac{\partial\mathcal{L}}{\partial h_3}\cdot\frac{\partial h_3}{\partial h_2}\cdot\frac{\partial h_2}{\partial h_1}\cdot\frac{\partial h_1}{\partial W}}_{\text{第 1 步贡献}} $$
+</div>
+
+<p><b>关键观察：每往回退一步，链条上就多一个 $\partial h_t / \partial h_{t-1}$。</b>这一串连乘就是 "<em>through time</em>" 的由来。$N = 1000$ 步的序列，链条最长要乘 1000 个偏导。</p>
+
+<p><b>第 4 步 · 为什么这很烫手。</b></p>
+<ul>
+  <li><b>显存爆炸：</b>展开图有 $N$ 个节点，前向时每一个 $h_t$ 都得留下来（反向传播要用）。$N = 10\,000$ → 要存 10,000 份激活。</li>
+  <li><b>梯度消失 / 爆炸：</b>链条上乘了一长串 $\partial h_t/\partial h_{t-1}$，模如果平均 $&lt; 1$ → 指数衰减（消失）；$&gt; 1$ → 爆炸。这也是 LSTM/GRU 存在的理由。</li>
+</ul>
+
+<p><b>第 5 步 · 截断 = 人为让链条变短。</b>把长序列切成 $L$ 步小段，<b>只</b>在段内展开 + 反传；段与段之间只让 $h$ 的<em>数值</em>过去、<em>不让</em>梯度过去。</p>
+
+<div class="note"><b>一句话：</b>"BPTT" = 在展开图上的普通反向传播；"Truncated BPTT" = 展开图只展开 $L$ 步、段间数值过、梯度断。</div>
+
+<!-- ===================== 1.8 ===================== -->
+<h3 id="p1-8">1.8 把这套思路搬到 Transformer：Transformer-XL</h3>
+
+<p>直接的想法：把长序列切段，每次只对一段做前向 + 反传。<b>但有两个坑</b>：</p>
+
+<ol>
+  <li><b>Transformer 没有 $h$ 这样的"压缩状态"</b>——它靠 attention 看<em>原始 token</em>。如果段与段完全独立，第 2 段根本看不到第 1 段。</li>
+  <li><b>位置编码</b>在段间会冲突：两段里都会出现 "position 0, 1, 2 …"。</li>
+</ol>
+
+<p>Dai et al. (2019) 的 <b>Transformer-XL</b> 给了一个干净的做法：</p>
+
+<div class="formula-box" style="background:var(--proof-bg); border-left-color: var(--good)">
+<b>核心思想：</b>每一层都缓存"上一段的 hidden states"作为<em>只读的 memory</em>。当前段做 attention 时，key/value 取自 <em>memory ⊕ 当前段</em>的拼接；梯度不流回 memory；位置编码改用<b>相对位置</b>。
+</div>
+
+<svg class="arch-svg" viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .mem { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+    .cur { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+    .layer { font: 600 12px sans-serif; fill: #1e3a8a; text-anchor: start; }
+    .lab2 { font: 11px sans-serif; fill: #374151; text-anchor: middle; }
+    .att { stroke: #7c3aed; stroke-width: 1.5; fill: none; marker-end: url(#arr2); stroke-dasharray: 2 2; }
+    .cross2 { stroke: #dc2626; stroke-width: 3; }
+  </style>
+  <defs>
+    <marker id="arr4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- layer 1 -->
+  <text x="10" y="55" class="layer">Layer 1</text>
+  <rect x="90"  y="40" width="180" height="30" class="mem" rx="3"/>
+  <text x="180" y="60" class="lab2">Memory (上一段，detached)</text>
+  <rect x="280" y="40" width="180" height="30" class="cur" rx="3"/>
+  <text x="370" y="60" class="lab2">当前段 hidden</text>
+
+  <!-- layer 2 -->
+  <text x="10" y="130" class="layer">Layer 2</text>
+  <rect x="90"  y="115" width="180" height="30" class="mem" rx="3"/>
+  <text x="180" y="135" class="lab2">Memory (L2)</text>
+  <rect x="280" y="115" width="180" height="30" class="cur" rx="3"/>
+  <text x="370" y="135" class="lab2">当前段 L2</text>
+
+  <!-- layer 3 -->
+  <text x="10" y="205" class="layer">Layer 3</text>
+  <rect x="90"  y="190" width="180" height="30" class="mem" rx="3"/>
+  <text x="180" y="210" class="lab2">Memory (L3)</text>
+  <rect x="280" y="190" width="180" height="30" class="cur" rx="3"/>
+  <text x="370" y="210" class="lab2">当前段 L3</text>
+
+  <!-- attention arrows (query from current reading keys in memory+current) -->
+  <path stroke="#7c3aed" stroke-width="1.5" fill="none" marker-end="url(#arr4)" d="M 370 80 C 370 100 180 100 180 115"/>
+  <path stroke="#7c3aed" stroke-width="1.5" fill="none" marker-end="url(#arr4)" d="M 370 80 C 370 100 370 100 370 115"/>
+
+  <text x="540" y="80" class="lab2" style="text-anchor:start; fill:#7c3aed">每层 query 可以看 memory + 当前</text>
+  <text x="540" y="130" class="lab2" style="text-anchor:start">但梯度不能进 memory ✂</text>
+
+  <!-- cross on memory gradient -->
+  <line x1="540" y1="138" x2="600" y2="148" class="cross2"/>
+  <line x1="600" y1="138" x2="540" y2="148" class="cross2"/>
+</svg>
+
+<p><b>为什么是对的（和 RNN 的 TBPTT 是一对一对应的）：</b></p>
+
+<table>
+<tr><th>RNN TBPTT</th><th>Transformer-XL</th></tr>
+<tr><td>隐状态 $h_t$</td><td>每一层的 hidden states 序列</td></tr>
+<tr><td>$h$ 在段间传递</td><td>每层 memory 缓存上一段的 hidden</td></tr>
+<tr><td>$h$ 被 detach</td><td>memory 被 stop_grad</td></tr>
+<tr><td>当前段算梯度</td><td>当前段算梯度</td></tr>
+<tr><td>位置是相对的 (天然)</td><td>必须换成相对位置编码</td></tr>
+</table>
+
+<p><b>显存收益：</b>注意力矩阵变成 $L\times(L+M)$ 而不是 $N\times N$（其中 $N$ 是总序列长，$L$ 是段长，$M$ 是 memory 长）。如果取 $M = L$，就是 $L\times 2L$——对 $L \ll N$ 是巨大节省。</p>
+
+<h4 id="p1-8-mem" style="margin-top:2rem; padding-top:0.8rem; border-top:1px dashed var(--border); color:var(--accent)">🔧 Memory 工程细节：到底怎么存 / 怎么用 / 怎么更新</h4>
+
+<p>很多人对 "memory" 的第一反应是"压缩成一个向量"（像 RNN 的 $h$）。Transformer-XL <b>不是</b>这样——它就是个朴素的<b>定长环形缓冲</b>。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">1️⃣ 存什么</h5>
+<p>每一层独立地有一份 memory $\mathrm{Mem}^{(\ell)} \in \mathbb{R}^{M \times d}$，里面放的是"上一段结束时从层 $\ell$ 出来的 hidden states"。</p>
+<ul>
+  <li>原始激活向量，<b>没有</b>降维、压缩或变换</li>
+  <li>已经 <code>detach</code>，梯度不能流进去</li>
+  <li>长度永远是 $M$（固定），常用 $M = L$ 或 $M = 2L$</li>
+  <li>$D$ 层 Transformer 就有 $D$ 份独立的 memory</li>
+</ul>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">2️⃣ 当前段怎么用</h5>
+
+<div style="overflow-x:auto">
+<table>
+<tr><th></th><th>来源</th><th>形状</th></tr>
+<tr><td>$Q$ (query)</td><td>只看当前段 hidden</td><td>$L \times d$</td></tr>
+<tr><td>$K, V$</td><td>$\mathrm{concat}\bigl(\mathrm{Mem}^{(\ell-1)},\, h^{(\ell-1)}_{\text{当前}}\bigr)$</td><td>$(L + M) \times d$</td></tr>
+</table>
+</div>
+
+<p>注意力分数矩阵的形状是 $L \times (L+M)$。每一个当前 token 同时能看到<b>过去 $M$ 个 memory token</b> 和<b>当前段 $L$ 个 token</b>。</p>
+
+<svg class="arch-svg" viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .mbox { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+    .cbox { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+    .attn-box { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2; }
+    .lab5 { font: 12px sans-serif; fill: #374151; text-anchor: middle; }
+    .lab5b { font: 600 12px sans-serif; fill: #1e3a8a; text-anchor: middle; }
+  </style>
+  <rect x="40"  y="20" width="200" height="30" class="mbox" rx="3"/>
+  <text x="140" y="40" class="lab5">Memory (M 个, 只读, detached)</text>
+  <rect x="250" y="20" width="150" height="30" class="cbox" rx="3"/>
+  <text x="325" y="40" class="lab5">当前段 (L 个)</text>
+  <text x="30" y="75" class="lab5" style="text-anchor:start">↓ concat 成 K, V，长度 L + M</text>
+  <rect x="40"  y="85" width="360" height="25" rx="3" class="attn-box"/>
+  <text x="220" y="102" class="lab5b">K, V (L + M 个)</text>
+
+  <text x="325" y="140" class="lab5" style="text-anchor:middle">Q 只来自当前段</text>
+  <rect x="250" y="150" width="150" height="25" class="cbox" rx="3"/>
+  <text x="325" y="167" class="lab5b">Q (L 个)</text>
+
+  <text x="425" y="105" style="text-anchor:start; font: 12px sans-serif; fill:#7c3aed;">→ attention 矩阵  L × (L+M)</text>
+</svg>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">3️⃣ 怎么更新 (FIFO)</h5>
+<p>当前段处理完得到新的 $h^{(\ell)}$ (长 $L$)。把它和老 memory 拼起来，取最后 $M$ 行：</p>
+<div class="formula-box">
+$$ \mathrm{Mem}^{(\ell)} \;\leftarrow\; \mathrm{stop\_grad}\!\Bigl(\text{后 }M\text{ 行 of }\mathrm{concat}\bigl(\mathrm{Mem}^{(\ell)},\, h^{(\ell)}\bigr)\Bigr) $$
+</div>
+<pre><code>段 t 前：    Mem = [ 老 老 老 老 老 老 老 ]               (长度 M)
+段 t 处理完：h   = [ 新 新 新 新 ]                         (长度 L)
+拼接：            [ 老 老 老 老 老 老 老 新 新 新 新 ]     (长度 M+L)
+砍掉最前面 L：             [ 老 老 老 新 新 新 新 ]       (长度 M)</code></pre>
+<p>没有神经网络、没有池化、没有卷积——<b>就是切片</b>。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">4️⃣ 为什么必须配相对位置编码</h5>
+
+<p>如果还用 vanilla 的绝对位置编码（位置 $0, 1, 2, \ldots$）：</p>
+<ul>
+  <li>memory 里的 token 带着位置 $0, \ldots, L-1$</li>
+  <li>当前段也带着位置 $0, \ldots, L-1$ ——<b>两边撞车</b> ☠️</li>
+</ul>
+
+<p><b>相对位置编码</b>的想法：attention 分数只依赖 query 和 key 的<em>相对距离</em> $i - j$，不看绝对位置：</p>
+<div class="formula-box">
+$$ \text{score}(q_i, k_j) \;=\; f\bigl(q_i, k_j,\; i - j\bigr) $$
+</div>
+<p>于是"距离 3 步"永远就是"距离 3 步"，无论这两个 token 被放在哪一段。段边界的位置冲突自动消失。</p>
+
+<p>Transformer-XL 论文把 attention 分数展开成 4 项（内容-内容 / 内容-位置 / 全局内容偏置 / 全局位置偏置），其中位置相关项用 $R_{i-j}$（相对距离的正弦嵌入）取代原来的绝对位置嵌入。细节不必死记，但要记住结论：<b>相对位置编码是 Transformer-XL 的必要配件</b>。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">5️⃣ 延伸：真的想"压缩"怎么办</h5>
+<p>DeepMind 的 <b>Compressive Transformer</b> (Rae et al. 2019) 在 Transformer-XL 基础上多加一层"压缩 memory"：普通 memory (长 $M_1$) 丢出去的老 token，用一个小的压缩函数（比如 1D conv 或 attention pool）把每 $k$ 个打包成 1 个，存入压缩 memory (长 $M_2$)。这样总能"看到" $L + M_1 + k \cdot M_2$ 步，但每一步的"新鲜度"随距离衰减。</p>
+<p>但 vanilla Transformer-XL（作业题问的）<b>不做</b>这一步——老的 token 直接被丢掉。</p>
+
+<h4 id="p1-8-complexity" style="margin-top:2rem; padding-top:0.8rem; border-top:1px dashed var(--border); color:var(--accent)">📊 复杂度拆解：$O(L^2 d)$ 和 $O(LM)$ 到底是谁是谁</h4>
+
+<p>很容易困惑：前面 1.3 节说 vanilla 注意力是 $O(L^2 d)$，这里又说 Transformer-XL 的 attention 是 $O(LM)$——<b>它们不矛盾，是在讲不同的东西</b>：</p>
+
+<ul>
+  <li><b>$O(L^2 d)$ = FLOPs</b>（带有 $d$ 因子，来自每个 attention score 是一次 $d$ 维点积）</li>
+  <li><b>$O(L^2)$ / $O(LM)$ = attention 矩阵的显存</b>（没有 $d$ 因子，就是矩阵有多少个元素）</li>
+</ul>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">三种场景一张表</h5>
+
+<p>设全序列长 $N$，段长 $L$，memory 长 $M$，隐藏维度 $d$，层数 $D$：</p>
+
+<div style="overflow-x:auto">
+<table>
+<tr>
+  <th></th>
+  <th>注意力矩阵形状</th>
+  <th>单次 attention FLOPs</th>
+  <th>单次 attention 显存</th>
+  <th>梯度最远传</th>
+</tr>
+<tr>
+  <td>vanilla 全序列</td>
+  <td>$N \times N$</td>
+  <td>$O(N^2 d)$</td>
+  <td>$O(N^2)$</td>
+  <td>$N$</td>
+</tr>
+<tr>
+  <td>分段 · 无 memory</td>
+  <td>$L \times L$ (每段)</td>
+  <td>$O(L^2 d)$</td>
+  <td>$O(L^2)$</td>
+  <td>$L$</td>
+</tr>
+<tr style="background: var(--proof-bg);">
+  <td><b>Transformer-XL</b></td>
+  <td><b>$L \times (L+M)$</b></td>
+  <td><b>$O\bigl(L(L+M)\,d\bigr)$</b></td>
+  <td><b>$O\bigl(L(L+M)\bigr)$</b></td>
+  <td>$L$</td>
+</tr>
+</table>
+</div>
+
+<p><b>关键：$N$ 在后两行的单次 attention 里消失了</b>——替换成固定的 $L$ 或 $L+M$。这就是"对 $N$ 线性"的由来。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">那 "$O(LM)$" 到底指哪一块</h5>
+
+<p>就是上表第三行的 attention 矩阵 $L \times (L+M)$。展开：</p>
+
+<div class="formula-box">
+$$ L(L+M) \;=\; \underbrace{L^2}_{\text{段内 self-attention}} \;+\; \underbrace{L \cdot M}_{\text{当前 query 看 memory}} $$
+</div>
+
+<ul>
+  <li>$M \ll L$：主导项是 $L^2$，和"分段无 memory"同阶</li>
+  <li>$M \approx L$（最常见）：两项都是 $L^2$ 量级，合计 $2L^2$</li>
+  <li>$M \gg L$：主导项是 $LM$ —— 这时 "$O(LM)$" 是精确的主阶</li>
+</ul>
+
+<p>合法写法：per-segment per-layer 的 attention FLOPs 是 $O\bigl(L(L+M)\,d\bigr)$，展开 $M\gg L$ 时 $\approx O(LMd)$，展开 $M=0$ 时退化成 $O(L^2 d)$。<b>所以 $O(L^2 d)$ 就是 $M=0$ 的特例</b>。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">前向感受野 vs 梯度反传距离（容易混的第 3 件事）</h5>
+
+<p><b>梯度只能传 $L$ 步，但前向能"看"比 $L$ 远得多。</b></p>
+
+<pre><code>层 1:  当前 token 通过 attention 能看 M 个 memory 位置
+层 2:  读到的 hidden 里已经是 "层 1 + 它自己那层 memory" 的混合 → 等效多看 M
+层 3:  同理 → 再多 M
+...
+前向感受野 ≈ D × M        (D = 层数)
+梯度反传距离 = L           (memory 被 stop_grad)</code></pre>
+
+<p>所以 Transformer-XL 的模型：<b>推理时</b>能利用很长的上下文（$D\cdot M$ 步）；<b>训练时</b>只学到 $L$ 步以内的依赖。这种"能看得远 vs 学不到远"的落差，和 truncated BPTT 完全一样。</p>
+
+<div class="note"><b>一句话回答"到底省在哪"：</b>省的<em>不是</em> "$L^2 d \to LM$"（这其实不一定更小），而是 <b>"$N^2 \to L(L+M)$"</b>。每一段的 attention 矩阵大小不再随<em>总长 $N$</em> 增长，这才是 Transformer-XL 真正 bought 给你的东西。</div>
+
+<!-- ===================== 1.9 ===================== -->
+<h3 id="p1-9">1.9 伪代码逐行解读</h3>
+
+<pre><code>partition x[1..N] into segments s_1, s_2, ..., s_T of length L
+initialize Mem[ℓ] = empty for each layer ℓ = 0..D-1
+
+for t = 1..T:                                 <span style="color:#6b7280"># 遍历每一段</span>
+    h[0] = Embed(s_t)                          <span style="color:#6b7280"># 词 embedding，形状 L×d</span>
+    for ℓ = 1..D:                             <span style="color:#6b7280"># 从下到上过每一层</span>
+        context = concat(<b>stop_grad(Mem[ℓ-1])</b>, h[ℓ-1])
+                                               <span style="color:#6b7280"># ↑↑↑ 这里是截断的关键</span>
+        h[ℓ] = TransformerLayer_ℓ(
+                   query = h[ℓ-1],
+                   key = value = context,
+                   pos = <b>relative</b>)        <span style="color:#6b7280"># 相对位置编码</span>
+    L_t = CrossEntropy(Out(h[D]), target_t)
+    <b>backward(L_t); update(θ)</b>                  <span style="color:#6b7280"># 梯度只走当前段</span>
+
+    for ℓ = 0..D-1:                           <span style="color:#6b7280"># 刷新 memory 给下一段</span>
+        Mem[ℓ] = stop_grad(last M rows of concat(Mem[ℓ], h[ℓ]))
+</code></pre>
+
+<p>每一行背后的"为什么"：</p>
+<ul>
+  <li><code>stop_grad(Mem)</code>：这是 TBPTT 的精髓。梯度遇到它就停止——所以反传不会越过段边界，显存就不会爆。</li>
+  <li><code>context = concat(Mem, h)</code>：前向时 key/value 仍然能看到上一段，信息不丢。</li>
+  <li><code>query = h[ℓ-1]</code>：只有当前段生成 query（memory 里的 token 不需要重新生成输出）。</li>
+  <li><code>relative position</code>：避免段间位置编号冲突。相对位置只关心"你和我差几步"，不关心"你是第几个"。</li>
+  <li><code>Mem[ℓ] = last M rows</code>：memory 总长度固定在 $M$，不会随训练无限膨胀。</li>
+</ul>
+
+<p class="note">回到题目：这份伪代码就是<b>第二问的答卷</b>。核心只有两件事：<b>(1) 段级循环 + 上一段做只读 memory；(2) stop_grad 切断梯度。</b></p>
+</section>
+
+
+<!-- ======================================================= -->
+<!-- PROBLEM 2 -->
+<!-- ======================================================= -->
+<section id="p2">
+<h2>Problem 2 · 把 Parallel WaveNet 写成 $L$ 层归一化流</h2>
+
+<p><b>题目大意：</b>Parallel WaveNet 的生成公式是</p>
+<div class="formula-box">
+$$ x_i \;=\; \mu_\theta(z_{1:i-1}) \;+\; z_i \cdot \exp\!\bigl(\alpha_\theta(z_{1:i-1})\bigr),\qquad z \sim \mathcal{N}(0, I). $$
+</div>
+<p>把它显式地写成一个有 $L$ 层的<b>归一化流（normalizing flow）</b>，每层只改变一个变量 $z_i \to x_i$；说明为什么组合之后仍然是合法的流。</p>
+
+<!-- ===================== 2.1 ===================== -->
+<h3 id="p2-1">2.1 先搞清楚：什么是归一化流</h3>
+
+<p>归一化流做一件事：<b>把一个你会采样、会算密度的简单分布（比如标准正态），经过一个可逆变换，变成一个复杂的目标分布</b>。</p>
+
+<svg class="arch-svg" viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .sphere { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+    .blob { fill: #fde68a; stroke: #d97706; stroke-width: 2; }
+    .t { font: 600 14px sans-serif; text-anchor: middle; fill: #1e3a8a; }
+    .arrow { stroke: #7c3aed; stroke-width: 3; fill: none; marker-end: url(#arr5); }
+  </style>
+  <defs>
+    <marker id="arr5" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <polygon points="0 0, 9 5, 0 10" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <circle cx="110" cy="90" r="55" class="sphere"/>
+  <text x="110" y="95" class="t">z ~ 𝒩(0, I)</text>
+  <text x="110" y="165" class="t" style="font-size:11px; fill:#6b7280">简单、好采样</text>
+
+  <path class="arrow" d="M 200 90 L 340 90"/>
+  <text x="270" y="75" class="t" style="fill:#7c3aed">T(z)</text>
+  <text x="270" y="115" class="t" style="font-size:11px; fill:#6b7280">可逆变换</text>
+
+  <path d="M 380 60 Q 500 30 580 90 Q 660 140 440 140 Q 380 115 380 60 Z" class="blob"/>
+  <text x="500" y="95" class="t">x ~ p_X (复杂)</text>
+  <text x="500" y="165" class="t" style="font-size:11px; fill:#6b7280">目标分布（如音频）</text>
+</svg>
+
+<p>关键是<b>"可逆"</b>——这样我们可以：</p>
+<ul>
+  <li><b>采样</b>：先从 $p_Z$ 采 $z$，过一遍 $T$ 得到 $x$。</li>
+  <li><b>算密度</b>：要 $p_X(x)$，反推 $z = T^{-1}(x)$，然后用变量替换公式。</li>
+</ul>
+
+<!-- ===================== 2.2 ===================== -->
+<h3 id="p2-2">2.2 背景公式：变量替换</h3>
+
+<p>如果 $x = T(z)$ 是可逆的平滑映射，那么 $x$ 的密度是：</p>
+<div class="formula-box">
+$$ p_X(x) \;=\; p_Z\!\bigl(T^{-1}(x)\bigr) \cdot \left|\det \tfrac{\partial T^{-1}}{\partial x}\right| \;=\; \frac{p_Z(z)}{\bigl|\det \tfrac{\partial T}{\partial z}\bigr|} $$
+</div>
+<p>直觉：$T$ 把 $z$ 空间的某个"小方块"映成 $x$ 空间的某个"变形方块"。变形的体积放大倍数就是 $|\det J|$。概率守恒——原先 $p_Z\,\mathrm{d}z$ 的"量"必须等于 $p_X\,\mathrm{d}x$ 的"量"，所以</p>
+<div class="formula-box">
+$$ p_X(x) \cdot |\det J| \cdot \mathrm{d}z \;=\; p_Z(z)\cdot \mathrm{d}z \;\Longrightarrow\; p_X(x) = p_Z(z)/|\det J|. $$
+</div>
+
+<p>所以归一化流要让两件事都容易：</p>
+<ol>
+  <li>$T^{-1}$ 能求出来（否则算不了 $z$）。</li>
+  <li>$|\det J|$ 能廉价算出来（否则一次 log-likelihood 要花 $O(L^3)$ 做行列式）。</li>
+</ol>
+
+<!-- ===================== 2.3 ===================== -->
+<h3 id="p2-3">2.3 Parallel WaveNet 为什么要这样写</h3>
+
+<p>原版 WaveNet 采样是<b>自回归</b>的：</p>
+<div class="formula-box">
+$$ x_i \sim p(x_i\mid x_{\lt i}). $$
+</div>
+<p>要顺序生成 $x_1 \to x_2 \to \cdots \to x_L$，一个音频 1 秒 = 24 000 个采样点，生成起来慢到离谱。</p>
+
+<p>Parallel WaveNet 的想法：与其依赖 $x_{\lt i}$，不如依赖 <b>独立的 $z_{\lt i}$</b>——这样拿到 $z$ 以后，所有 $x_i$ 可以<b>同时</b>算，因为它们不再互相等。</p>
+
+<div class="formula-box">
+$$ x_i = \mu_\theta(z_{1:i-1}) + z_i \cdot \exp(\alpha_\theta(z_{1:i-1})) $$
+</div>
+
+<p>题目要求把这个关系<b>形式化</b>成一个归一化流——用 $L$ 层、每层改动一个坐标。</p>
+
+<h4 id="p2-3-parallel" style="margin-top:2rem; padding-top:0.8rem; border-top:1px dashed var(--border); color:var(--accent)">⚡ 深入：到底"并行"在哪里</h4>
+
+<p>这是整个问题最关键也最容易卡住的直觉点。先把对比画清楚：</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">1️⃣ vanilla WaveNet 为什么慢</h5>
+
+<p>采样规则 $x_i \sim p(x_i \mid x_{\lt i})$。<b>$x_i$ 依赖"前面已经生成的 $x_{\lt i}$"</b>——还没出生的东西。所以必须一个接一个：</p>
+
+<pre><code>t=1:  没有历史 → forward → 采 x₁
+t=2:  有 x₁   → forward → 采 x₂
+t=3:  有 x₁,x₂ → forward → 采 x₃
+...
+t=L:  需要 x₁..x_{L-1} → forward → 采 x_L</code></pre>
+
+<p>1 秒音频 24 000 个采样点 → <b>24 000 次串行 forward</b>。GPU 的并行算力基本用不上，因为下一步必须等上一步。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">2️⃣ Parallel WaveNet 把依赖从 $x$ 换成 $z$</h5>
+
+<div style="overflow-x:auto">
+<table>
+<tr><th></th><th>vanilla WaveNet</th><th>Parallel WaveNet</th></tr>
+<tr><td>$x_i$ 依赖谁</td><td>$x_{\lt i}$ (未来要生成)</td><td>$z_{\lt i}$ (<b>独立</b>高斯噪声)</td></tr>
+<tr><td>这个东西什么时候能拿到</td><td>要等前面每一步顺序采样完</td><td><b>一开始</b>就可以全部采完</td></tr>
+</table>
+</div>
+
+<p>因为 $z_1, z_2, \ldots, z_L$ 都是 i.i.d. 的 $\mathcal{N}(0, I)$——互相独立、没有先后关系，所以第一步就能把<b>整条 $z$ 向量一次性采出来</b>：</p>
+
+<pre><code>z = torch.randn(L, d)   # 这一行就把 z₁..z_L 全搞定了</code></pre>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">3️⃣ 拿到 $z$ 之后，所有 $x_i$ 可以同时算</h5>
+
+<p>公式 $x_i = \mu_\theta(z_{\lt i}) + z_i \cdot \exp(\alpha_\theta(z_{\lt i}))$ 右边<b>完全由已知的 $z$ 决定</b>，没有任何要等的东西：</p>
+
+<svg class="arch-svg" viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr7" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <style>
+    .zbox { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
+    .fbox { fill: #ede9fe; stroke: #7c3aed; stroke-width: 2; }
+    .mbox2 { fill: #fef3c7; stroke: #d97706; stroke-width: 1.5; }
+    .xbox { fill: #d1fae5; stroke: #059669; stroke-width: 2; }
+    .labz { font: 600 12px monospace; fill: #1e3a8a; text-anchor: middle; }
+    .labm { font: 600 11px monospace; fill: #78350f; text-anchor: middle; }
+    .labx { font: 600 12px monospace; fill: #065f46; text-anchor: middle; }
+    .hint { font: 11px sans-serif; fill: #6b7280; text-anchor: middle; }
+    .fl { stroke: #2563eb; stroke-width: 1.5; fill: none; marker-end: url(#arr7); }
+  </style>
+
+  <!-- Row 1: z samples -->
+  <text x="20" y="30" style="font:600 13px sans-serif; fill:#2563eb; text-anchor:start">① 一次从 N(0, I) 采出整条 z</text>
+  <rect x="70"  y="40" width="60" height="30" class="zbox" rx="3"/><text x="100" y="60" class="labz">z₁</text>
+  <rect x="140" y="40" width="60" height="30" class="zbox" rx="3"/><text x="170" y="60" class="labz">z₂</text>
+  <rect x="210" y="40" width="60" height="30" class="zbox" rx="3"/><text x="240" y="60" class="labz">z₃</text>
+  <rect x="280" y="40" width="60" height="30" class="zbox" rx="3"/><text x="310" y="60" class="labz">z₄</text>
+  <rect x="350" y="40" width="60" height="30" class="zbox" rx="3"/><text x="380" y="60" class="labz">z₅</text>
+  <rect x="420" y="40" width="60" height="30" class="zbox" rx="3"/><text x="450" y="60" class="labz">z₆</text>
+  <text x="530" y="60" class="hint" style="text-anchor:start">→ 全部独立</text>
+
+  <!-- Row 2: single forward through causal net -->
+  <path class="fl" d="M 100 70 L 100 100"/>
+  <path class="fl" d="M 170 70 L 170 100"/>
+  <path class="fl" d="M 240 70 L 240 100"/>
+  <path class="fl" d="M 310 70 L 310 100"/>
+  <path class="fl" d="M 380 70 L 380 100"/>
+  <path class="fl" d="M 450 70 L 450 100"/>
+
+  <text x="20" y="125" style="font:600 13px sans-serif; fill:#7c3aed; text-anchor:start">② 一次 forward 算出所有 μ, α</text>
+  <rect x="60" y="130" width="430" height="50" class="fbox" rx="6"/>
+  <text x="275" y="152" style="font:600 14px sans-serif; fill:#5b21b6; text-anchor:middle">因果卷积网络 f_θ</text>
+  <text x="275" y="170" class="hint">(位置 i 只能看 z₁..z_{i-1})</text>
+
+  <!-- Row 3: mu, alpha outputs -->
+  <rect x="70"  y="195" width="60" height="28" class="mbox2" rx="3"/><text x="100" y="213" class="labm">μ₁, α₁</text>
+  <rect x="140" y="195" width="60" height="28" class="mbox2" rx="3"/><text x="170" y="213" class="labm">μ₂, α₂</text>
+  <rect x="210" y="195" width="60" height="28" class="mbox2" rx="3"/><text x="240" y="213" class="labm">μ₃, α₃</text>
+  <rect x="280" y="195" width="60" height="28" class="mbox2" rx="3"/><text x="310" y="213" class="labm">μ₄, α₄</text>
+  <rect x="350" y="195" width="60" height="28" class="mbox2" rx="3"/><text x="380" y="213" class="labm">μ₅, α₅</text>
+  <rect x="420" y="195" width="60" height="28" class="mbox2" rx="3"/><text x="450" y="213" class="labm">μ₆, α₆</text>
+  <text x="530" y="213" class="hint" style="text-anchor:start">→ 全部并行出</text>
+
+  <!-- arrow to x -->
+  <path class="fl" d="M 100 223 L 100 253"/>
+  <path class="fl" d="M 170 223 L 170 253"/>
+  <path class="fl" d="M 240 223 L 240 253"/>
+  <path class="fl" d="M 310 223 L 310 253"/>
+  <path class="fl" d="M 380 223 L 380 253"/>
+  <path class="fl" d="M 450 223 L 450 253"/>
+
+  <text x="20" y="272" style="font:600 13px sans-serif; fill:#059669; text-anchor:start">③ 逐元素 x = μ + z · exp(α)</text>
+  <rect x="70"  y="280" width="60" height="30" class="xbox" rx="3"/><text x="100" y="300" class="labx">x₁</text>
+  <rect x="140" y="280" width="60" height="30" class="xbox" rx="3"/><text x="170" y="300" class="labx">x₂</text>
+  <rect x="210" y="280" width="60" height="30" class="xbox" rx="3"/><text x="240" y="300" class="labx">x₃</text>
+  <rect x="280" y="280" width="60" height="30" class="xbox" rx="3"/><text x="310" y="300" class="labx">x₄</text>
+  <rect x="350" y="280" width="60" height="30" class="xbox" rx="3"/><text x="380" y="300" class="labx">x₅</text>
+  <rect x="420" y="280" width="60" height="30" class="xbox" rx="3"/><text x="450" y="300" class="labx">x₆</text>
+  <text x="530" y="300" class="hint" style="text-anchor:start">✅ 一步到位</text>
+</svg>
+
+<p>整个采样<b>只做 1 次神经网络前向</b>，$L$ 个 $x_i$ 同时出来。对比自回归 WaveNet 的 $L$ 次串行前向——音频场景下 <b>~1000× 加速</b>。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">4️⃣ "并行"具体并行在哪三处</h5>
+
+<ol>
+  <li><b>采 $z$</b>：高斯是 i.i.d.，一步搞定所有 $z_i$。</li>
+  <li><b>算 $\mu, \alpha$</b>：网络对所有位置一次前向全部输出（因果卷积在训练时一次看到整条 $z$）。</li>
+  <li><b>组合 $x = \mu + z \odot \exp(\alpha)$</b>：逐元素运算，天然并行。</li>
+</ol>
+
+<div class="note"><b>直觉类比：</b>做菜 🍳<br>
+· 自回归：第 $i$ 道菜要用第 $i-1$ 道菜做成的酱汁 → 一道一道做。<br>
+· Parallel WaveNet：第 $i$ 道菜要用第 $1, \ldots, i-1$ 份<b>食材</b>，而食材一开始就全部送来了 → 所有菜可以同时开锅。</div>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">5️⃣ 但是——训练（逆方向）仍然串行</h5>
+
+<p>反向给定真实音频 $x$ 反推 $z$：</p>
+
+<div class="formula-box">
+$$ z_i = \frac{x_i - \mu_\theta(z_{\lt i})}{\exp\bigl(\alpha_\theta(z_{\lt i})\bigr)} $$
+</div>
+
+<p>这里 $z_i$ 依赖 $z_{\lt i}$（已经算出来的那些 $z$）——真正的链式依赖，必须 $z_1 \to z_2 \to \cdots \to z_L$ 顺序算。</p>
+
+<p>所以 Parallel WaveNet 属于一类叫 <b>Inverse Autoregressive Flow (IAF)</b> 的流：</p>
+
+<div style="overflow-x:auto">
+<table>
+<tr><th></th><th>正向 $z \to x$ (采样)</th><th>反向 $x \to z$ (算密度)</th></tr>
+<tr><td><b>IAF</b> (Parallel WaveNet)</td><td>✅ 并行</td><td>❌ 串行</td></tr>
+<tr><td><b>MAF</b> (Masked AF)</td><td>❌ 串行</td><td>✅ 并行</td></tr>
+</table>
+</div>
+
+<p>两种流<b>对偶</b>：总有一个方向是串行的，因为 Jacobian 的三角结构决定了某一个方向必然依赖前序坐标。</p>
+
+<p>Parallel WaveNet 选 IAF 是因为<b>他们只关心采样速度</b>（要快速生成音频）。训练阶段绕开"反向串行"的工程 trick 叫做 <b>Probability Density Distillation</b>——用一个预训练好的 vanilla WaveNet 当"老师"去蒸馏学生 Parallel WaveNet。作业题不考这个，大致了解即可。</p>
+
+<h5 style="color:var(--accent2); margin-top:1rem;">6️⃣ 回到作业</h5>
+
+<p>"把这个过程构造成 $L$ 层归一化流"是一个<b>数学形式</b>——每一层 $T_i$ 只读 $z_{\lt i}$、只改 $z_i$ 所在的坐标。支撑"并行"这件事的并不是分层本身，而是<b>依赖图指向已知的 $z$ 而不是待生成的 $x$</b>——于是所有层、所有位置的计算可以压进一次前向同时做完。下一节开始写这个分层构造。</p>
+
+<!-- ===================== 2.4 ===================== -->
+<h3 id="p2-4">2.4 L 层构造</h3>
+
+<p>记 $w^{(0)} = z = (z_1, z_2, \ldots, z_L)$。定义第 $i$ 层 $T_i : \mathbb{R}^L \to \mathbb{R}^L$，它<b>只改第 $i$ 个坐标</b>：</p>
+
+<div class="formula-box">
+$$ \bigl(T_i(w)\bigr)_j = \begin{cases}
+w_j, & j \neq i, \\[2pt]
+\mu_\theta(w_1,\ldots,w_{i-1}) + w_i \cdot \exp\bigl(\alpha_\theta(w_1,\ldots,w_{i-1})\bigr), & j = i.
+\end{cases} $$
+</div>
+
+<p>叠起来 $T = T_L \circ T_{L-1} \circ \cdots \circ T_1$ 作用在 $z$ 上：</p>
+
+<div class="widget">
+<h4>🎬 交互：一层一层地看 $T$ 怎么变</h4>
+<p style="font-size:0.9rem; color:var(--muted)">初始 $z$ 是一串随机标准正态。点击"下一层"应用 $T_i$，观察哪个坐标被改。</p>
+<div class="controls">
+  <button id="flow-reset">🔄 重置 z</button>
+  <button id="flow-next">▶ 下一层</button>
+  <span id="flow-layer-label" style="font-family:monospace; font-weight:600;">当前：原始 z</span>
+</div>
+<div id="flow-vec" style="display:flex; gap:4px; margin-top:0.5rem;"></div>
+<p id="flow-explain" style="font-size:0.88rem; color:var(--muted); margin-top:0.8rem; min-height:2.5em;"></p>
+</div>
+
+<p>有一个微妙的点：第 $i$ 层调用的 $\mu_\theta, \alpha_\theta$，原公式里写的参数是 <b>$z_{1:i-1}$</b>（原始 latent）。但在流的中间状态里，前 $i-1$ 个位置已经被改写成 $x_{1:i-1}$ 了。两种写法其实等价，因为——</p>
+
+<div class="note"><b>关键：</b>前 $i-1$ 层构成的映射 $(z_1,\ldots,z_{i-1}) \leftrightarrow (x_1,\ldots,x_{i-1})$ 是双射（下一节会证），所以"给我 $z_{1:i-1}$"和"给我 $x_{1:i-1}$"携带的是同样的信息。神经网络 $\mu_\theta, \alpha_\theta$ 可以读任何一方，本质等价。</div>
+
+<!-- ===================== 2.5 ===================== -->
+<h3 id="p2-5">2.5 每层都可逆（进而组合也可逆）</h3>
+
+<p>给定某一层的输出 $w'$，我们要能解出输入 $w$。</p>
+<ul>
+  <li>对于 $j \neq i$：$T_i$ 没改，所以 $w_j = w'_j$。</li>
+  <li>对于 $j = i$：反解 $w'_i = \mu + w_i \cdot \exp(\alpha)$ 得到 $w_i = (w'_i - \mu) / \exp(\alpha)$。</li>
+</ul>
+
+<div class="formula-box">
+$$ \bigl(T_i^{-1}(w')\bigr)_i = \frac{w'_i - \mu_\theta(w'_{\lt i})}{\exp\!\bigl(\alpha_\theta(w'_{\lt i})\bigr)},\qquad
+\bigl(T_i^{-1}(w')\bigr)_j = w'_j\ (j \neq i). $$
+</div>
+
+<p>为什么一定能除得下去？因为 $\exp(\cdot)$ 恒为正，永远不会等于 0。✅</p>
+
+<p>有限多个双射的复合还是双射，所以 $T$ 可逆。</p>
+
+<!-- ===================== 2.6 ===================== -->
+<h3 id="p2-6">2.6 Jacobian 是下三角（所以行列式 = 对角线乘积）</h3>
+
+<p>看 $T_i$ 的 Jacobian $J_i$。它的第 $j$ 行是 $\partial (T_i(w))_j / \partial w$。</p>
+
+<ul>
+  <li><b>$j \neq i$</b>：$(T_i(w))_j = w_j$，所以这一行只在第 $j$ 列上是 1，其他是 0（单位向量）。</li>
+  <li><b>$j = i$</b>：$(T_i(w))_i = \mu_\theta(w_{\lt i}) + w_i \exp(\alpha_\theta(w_{\lt i}))$，对 $w_k$ 求偏导：
+    <ul>
+      <li>$k > i$：根本不依赖，$= 0$。</li>
+      <li>$k = i$：$\exp(\alpha_\theta(w_{\lt i}))$。</li>
+      <li>$k < i$：有 $\partial_\mu$ 和 $\partial_\alpha$ 的非零项。</li>
+    </ul>
+  </li>
+</ul>
+
+<p>画出来是这样的（以 $L=5, i=3$ 为例，<b>蓝色</b>是对角、<b>浅蓝</b>是非零、白色是 0）：</p>
+
+<div style="display:flex; justify-content:center; margin:1rem 0;">
+<div class="matrix" style="grid-template-columns: repeat(5, 26px); grid-template-rows: repeat(5, 26px);">
+  <!-- row 1: e_1 -->
+  <div class="cell diag">1</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div>
+  <!-- row 2: e_2 -->
+  <div class="cell zero">0</div><div class="cell diag">1</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div>
+  <!-- row 3: the nontrivial row -->
+  <div class="cell nz">·</div><div class="cell nz">·</div><div class="cell diag">e<sup>α</sup></div><div class="cell zero">0</div><div class="cell zero">0</div>
+  <!-- row 4: e_4 -->
+  <div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell diag">1</div><div class="cell zero">0</div>
+  <!-- row 5: e_5 -->
+  <div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell zero">0</div><div class="cell diag">1</div>
+</div>
+</div>
+
+<p><b>关键观察：</b>$J_i$ 是<b>下三角</b>矩阵（对角线上方都是 0）。</p>
+
+<div class="note"><b>为什么下三角矩阵的行列式 = 对角线元素乘积？</b><br>
+对任何下三角矩阵做余子式展开（cofactor expansion）沿最上面一行：第一行只有 $(1,1)$ 那一格非零，所以 $\det = M_{11} \cdot \det(\text{右下 }(L-1)\times (L-1)\text{ 子矩阵})$。递归下去就是对角线乘积。</div>
+
+<p>代入我们的 $J_i$，对角线是 $\underbrace{(1, 1, \ldots, 1}_{i-1\text{ 个}}, \exp(\alpha_\theta(w_{\lt i})), 1, \ldots, 1)$，所以：</p>
+
+<div class="formula-box">
+$$ \boxed{\;\det(J_i) \;=\; \exp\bigl(\alpha_\theta(w_{\lt i})\bigr)\;} $$
+</div>
+
+<p><b>整个流的 Jacobian：</b>链式法则给</p>
+<div class="formula-box">
+$$ \frac{\partial x}{\partial z} = J_L \cdot J_{L-1} \cdot \cdots \cdot J_1 $$
+</div>
+<p>行列式是乘积：</p>
+<div class="formula-box">
+$$ \log\!\left|\det \frac{\partial x}{\partial z}\right| \;=\; \sum_{i=1}^{L} \log|\det J_i| \;=\; \sum_{i=1}^{L} \alpha_\theta(z_{1:i-1}). $$
+</div>
+
+<p>✅ 一次前向就能算出——每个 $\alpha_\theta(z_{1:i-1})$ 本来就是神经网络的中间输出。</p>
+
+<!-- ===================== 2.7 ===================== -->
+<h3 id="p2-7">2.7 凑在一起：完整 log-likelihood</h3>
+
+<p>变量替换公式：</p>
+<div class="formula-box">
+\begin{align*}
+\log p_X(x) &= \log p_Z(z) - \log|\det J| \\
+ &= \underbrace{-\tfrac{1}{2}\sum_i z_i^2 - \tfrac{L}{2}\log 2\pi}_{\text{标准正态的 log-pdf}} - \sum_{i=1}^{L}\alpha_\theta(z_{1:i-1}).
+\end{align*}
+</div>
+
+<p>其中 $z_i = (x_i - \mu_\theta(z_{\lt i})) / \exp(\alpha_\theta(z_{\lt i}))$。</p>
+
+<p>所以：</p>
+<ol>
+  <li>训练时给定 $x$，用逆变换得到 $z$，代入上面公式算 log-likelihood。</li>
+  <li>采样时从 $\mathcal{N}(0,I)$ 采 $z$，用正变换（可以<b>一次并行</b>把每个 $\alpha, \mu$ 算出来——所有 $z_i$ 已经全在手里）得到 $x$。</li>
+</ol>
+
+<div class="note">回到题目：我们给出了 (1) 每层的显式变换，(2) 可逆性证明，(3) Jacobian 是三角的所以 $|\det|$ 可算——这三件事就是归一化流合法性的三个要求。✅</div>
+
+</section>
+
+
+<!-- ======================================================= -->
+<!-- PROBLEM 3 -->
+<!-- ======================================================= -->
+<section id="p3">
+<h2>Problem 3 · 证明投机解码保留目标分布</h2>
+
+<p><b>题目大意：</b>用一个"便宜的草稿模型 $q$"加速"昂贵的目标模型 $p$"的采样，但要证明最终输出的分布和直接从 $p$ 采样完全一样。</p>
+
+<!-- ===================== 3.1 ===================== -->
+<h3 id="p3-1">3.1 为什么解码这么慢</h3>
+
+<p>自回归大模型生成是<b>一次吐一个 token</b>：</p>
+<div class="formula-box">
+$$ y_1 \sim p(\cdot\mid x),\quad y_2 \sim p(\cdot \mid x, y_1),\quad y_3 \sim p(\cdot \mid x, y_{1:2}),\ \ldots $$
+</div>
+
+<p>每一步都要做一次<b>完整的 forward</b>——GPU 算得很快但 memory bandwidth 摸上限，而且无法并行化未来的 token。</p>
+
+<!-- ===================== 3.2 ===================== -->
+<h3 id="p3-2">3.2 投机解码（Speculative Decoding）的主意</h3>
+
+<p>Leviathan et al. (2023) 和 Chen et al. (2023) 同时提出：</p>
+
+<ol>
+  <li>用一个<b>小而快的草稿模型 $q$</b>提前猜 $k$ 个 token：$\tilde y_1, \ldots, \tilde y_k$。</li>
+  <li>让大模型 $p$ 对这 $k$ 个位置<b>并行</b>算出 $p(\cdot \mid x, y_{\lt j})$——只需<b>一次</b>大模型 forward。</li>
+  <li>然后用一个聪明的接受/拒绝规则，决定哪些 token 保留、哪些替换。</li>
+</ol>
+
+<svg class="arch-svg" viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr6" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <polygon points="0 0, 7 4, 0 8" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <style>
+    .tok { width: 36px; height: 36px; }
+    .acc { fill: #d1fae5; stroke: #059669; stroke-width: 2; }
+    .rej { fill: #fee2e2; stroke: #dc2626; stroke-width: 2; }
+    .new { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+    .draft { fill: #e0e7ff; stroke: #7c3aed; stroke-width: 2; }
+    .lab3 { font: 12px sans-serif; fill: #374151; }
+    .tokt { font: 600 13px monospace; text-anchor: middle; fill: #111; }
+  </style>
+
+  <text x="10" y="30" class="lab3" style="font-weight:600">Step 1 · 草稿 q 快速猜出 k 个 token</text>
+  <rect x="200" y="40" width="60" height="36" class="draft" rx="4"/><text x="230" y="63" class="tokt">ỹ₁</text>
+  <rect x="270" y="40" width="60" height="36" class="draft" rx="4"/><text x="300" y="63" class="tokt">ỹ₂</text>
+  <rect x="340" y="40" width="60" height="36" class="draft" rx="4"/><text x="370" y="63" class="tokt">ỹ₃</text>
+  <rect x="410" y="40" width="60" height="36" class="draft" rx="4"/><text x="440" y="63" class="tokt">ỹ₄</text>
+
+  <text x="10" y="115" class="lab3" style="font-weight:600">Step 2 · 大模型 p 并行算 p(·|prefix)</text>
+  <line x1="200" y1="95" x2="470" y2="95" stroke="#2563eb" stroke-width="2" marker-end="url(#arr6)"/>
+  <text x="340" y="110" class="lab3" style="text-anchor:middle;fill:#2563eb">一次 forward，得到四个位置的分布</text>
+
+  <text x="10" y="165" class="lab3" style="font-weight:600">Step 3 · 顺序接受/拒绝</text>
+  <rect x="200" y="175" width="60" height="36" class="acc" rx="4"/><text x="230" y="198" class="tokt">ỹ₁ ✓</text>
+  <rect x="270" y="175" width="60" height="36" class="acc" rx="4"/><text x="300" y="198" class="tokt">ỹ₂ ✓</text>
+  <rect x="340" y="175" width="60" height="36" class="rej" rx="4"/><text x="370" y="198" class="tokt">ỹ₃ ✗</text>
+  <rect x="410" y="175" width="60" height="36" class="new" rx="4"/><text x="440" y="198" class="tokt">y₃*</text>
+  <text x="485" y="198" class="lab3">⟵ 重采样的新 token</text>
+</svg>
+
+<p>如果平均每次草稿能被接受 $\bar k$ 个，大模型就只付出了 <b>1 次 forward 换来了 $\bar k$ 个 token</b>，加速 $\bar k$ 倍。</p>
+
+<!-- ===================== 3.3 ===================== -->
+<h3 id="p3-3">3.3 接受 / 拒绝规则（单 token 版本）</h3>
+
+<p>在某个位置，记 $p = p(\cdot \mid x, y_{\lt})$，$q = q(\cdot \mid x, y_{\lt})$（省掉相同的历史）。</p>
+
+<div class="formula-box">
+<b>规则：</b>
+<ol>
+  <li>从 $q$ 采 $\tilde y$。</li>
+  <li>以概率 $\min(1,\, p(\tilde y)/q(\tilde y))$ <span class="highlight-acc">接受</span>它，输出 $\tilde y$。</li>
+  <li>否则 <span class="highlight-rej">拒绝</span>，从<b>残差分布</b>重新采样：
+  $$ p_{\mathrm{res}}(y) = \frac{(p(y) - q(y))_{+}}{Z},\qquad Z = \sum_{y'} (p(y') - q(y'))_{+} $$
+  </li>
+</ol>
+</div>
+
+<p><b>直觉：</b>
+  <ul>
+    <li>如果草稿模型 $q$ 在 $\tilde y$ 上恰好和 $p$ 差不多（$p/q \approx 1$），基本接受，没浪费。</li>
+    <li>如果 $q$ 在 $\tilde y$ 上比 $p$ 高太多（$p/q$ 小），就有较高概率拒绝——因为这个 token 被 $q$ 过度抽了。</li>
+    <li>拒绝后要从 $(p - q)_+$ 这个"$p$ 比 $q$ 高出来的部分"里补采——正好补偿 $q$ 没抽够的 token。</li>
+  </ul>
+</p>
+
+<!-- ===================== 3.4 ===================== -->
+<h3 id="p3-4">3.4 关键恒等式（所有魔法都来自这里）</h3>
+
+<p>对<b>任何</b>两个非负数 $a, b$ 都有：</p>
+<div class="formula-box">
+$$ \boxed{\;\min(a, b) \;+\; (a - b)_{+} \;=\; a\;} $$
+</div>
+
+<p>这是纯代数，分两种情况看：</p>
+<ul>
+  <li>$a \le b$：$\min = a$，$(a-b)_+ = 0$，和 $= a$ ✓</li>
+  <li>$a > b$：$\min = b$，$(a-b)_+ = a-b$，和 $= b + (a-b) = a$ ✓</li>
+</ul>
+
+<p>把它画出来更直观——两条概率直方图 $p$（蓝）和 $q$（红），重叠部分是 $\min(p,q)$，$p$ 超出 $q$ 的部分是 $(p-q)_+$。两者加起来永远是 $p$：</p>
+
+<svg class="arch-svg" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .pbar { fill: #dbeafe; stroke: #2563eb; stroke-width: 1.5; }
+    .qbar { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.5; fill-opacity: 0.6; }
+    .ovl { fill: #a78bfa; fill-opacity: 0.45; }
+    .ax { stroke: #6b7280; stroke-width: 1; }
+    .lab4 { font: 11px sans-serif; fill: #374151; text-anchor: middle; }
+  </style>
+  <!-- axis -->
+  <line x1="40" y1="170" x2="470" y2="170" class="ax"/>
+  <!-- bars for 4 tokens -->
+  <!-- token 1: p=80, q=30 -->
+  <rect x="60" y="90" width="50" height="80" class="pbar"/>
+  <rect x="60" y="140" width="50" height="30" class="qbar"/>
+  <rect x="60" y="140" width="50" height="30" class="ovl"/>
+  <text x="85" y="185" class="lab4">y₁</text>
+  <!-- token 2: p=50, q=70 -->
+  <rect x="140" y="120" width="50" height="50" class="pbar"/>
+  <rect x="140" y="100" width="50" height="70" class="qbar"/>
+  <rect x="140" y="120" width="50" height="50" class="ovl"/>
+  <text x="165" y="185" class="lab4">y₂</text>
+  <!-- token 3: p=40, q=50 -->
+  <rect x="220" y="130" width="50" height="40" class="pbar"/>
+  <rect x="220" y="120" width="50" height="50" class="qbar"/>
+  <rect x="220" y="130" width="50" height="40" class="ovl"/>
+  <text x="245" y="185" class="lab4">y₃</text>
+  <!-- token 4: p=30, q=10 -->
+  <rect x="300" y="140" width="50" height="30" class="pbar"/>
+  <rect x="300" y="160" width="50" height="10" class="qbar"/>
+  <rect x="300" y="160" width="50" height="10" class="ovl"/>
+  <text x="325" y="185" class="lab4">y₄</text>
+
+  <!-- legend -->
+  <rect x="380" y="30" width="12" height="12" class="pbar"/>
+  <text x="398" y="40" class="lab4" style="text-anchor:start">p(y) 目标</text>
+  <rect x="380" y="48" width="12" height="12" class="qbar"/>
+  <text x="398" y="58" class="lab4" style="text-anchor:start">q(y) 草稿</text>
+  <rect x="380" y="66" width="12" height="12" class="ovl"/>
+  <text x="398" y="76" class="lab4" style="text-anchor:start">min(p,q)</text>
+</svg>
+
+<p>这个图直接给出两个要用的数：</p>
+<div class="formula-box">
+\begin{align*}
+\text{接受概率} \;P_\text{acc} &= \sum_y q(y)\cdot\min\!\bigl(1,\tfrac{p(y)}{q(y)}\bigr) = \sum_y \min(p(y), q(y)) \\
+\text{归一化常数} \;Z &= \sum_y (p(y)-q(y))_+ \\
+ &\overset{\text{对每个 }y \text{ 求和}}{=} \sum_y p(y) - \sum_y \min(p(y),q(y)) \\
+ &= 1 - P_\text{acc} \;=\; P_\text{rej}
+\end{align*}
+</div>
+
+<p><b>收获：$Z = P_\text{rej}$。</b>这个等式是下一节证明的钥匙。</p>
+
+<!-- ===================== 3.5 ===================== -->
+<h3 id="p3-5">3.5 单 token 正确性（引理）</h3>
+
+<p><b>要证：</b>最终输出 $Y$ 满足 $\Pr[Y = y] = p(y)$。</p>
+
+<div class="proof">
+<p>输出 $Y = y$ 有两条不相交的路径：</p>
+
+<p><b>路径 A · 接受路径：</b>草稿恰好采了 $y$ 并被接受。</p>
+<div class="formula-box" style="background:transparent; border:none; padding:0">
+$$ \Pr_A = q(y) \cdot \min\!\bigl(1, \tfrac{p(y)}{q(y)}\bigr) = \min\bigl(q(y), p(y)\bigr) $$
+</div>
+
+<p><b>路径 B · 拒绝路径：</b>任何草稿提议都被拒绝，然后从 $p_\text{res}$ 里重采到 $y$。</p>
+<div class="formula-box" style="background:transparent; border:none; padding:0">
+$$ \Pr_B = P_\text{rej} \cdot p_\text{res}(y) = \underbrace{Z}_{= P_\text{rej}} \cdot \frac{(p(y) - q(y))_+}{Z} = (p(y)-q(y))_+ $$
+</div>
+
+<p>两条加起来，用 3.4 节的恒等式：</p>
+<div class="formula-box" style="background:transparent; border:none; padding:0">
+$$ \Pr[Y = y] = \min(p(y), q(y)) + (p(y) - q(y))_+ = p(y). \qquad \square $$
+</div>
+</div>
+
+<p class="note"><b>神来之笔是哪一步？</b>其实就是 $Z = P_\text{rej}$ 那一步——它让路径 B 的概率正好变成 $(p-q)_+$，然后和 $\min(p,q)$ 对上恒等式。</p>
+
+<!-- ===================== 3.6 ===================== -->
+<h3 id="p3-6">3.6 交互：亲自验证 $\pi(y) = p(y)$</h3>
+
+<div class="widget">
+<h4>🎲 交互：随手填一个 $p, q$，看投机解码的输出分布确实 = $p$</h4>
+<p style="font-size:0.9rem; color:var(--muted)">下面四个 token 的概率可以任意拖动（会自动归一化）。页面会做 20 000 次投机解码 Monte Carlo，画出经验分布与真实 $p$ 的对比。</p>
+
+<div class="controls">
+  <div class="control"><label>p(y₁)</label><input type="range" id="p1" min="1" max="100" value="40"></div>
+  <div class="control"><label>p(y₂)</label><input type="range" id="p2" min="1" max="100" value="30"></div>
+  <div class="control"><label>p(y₃)</label><input type="range" id="p3" min="1" max="100" value="20"></div>
+  <div class="control"><label>p(y₄)</label><input type="range" id="p4" min="1" max="100" value="10"></div>
+</div>
+<div class="controls">
+  <div class="control"><label>q(y₁)</label><input type="range" id="q1" min="1" max="100" value="15"></div>
+  <div class="control"><label>q(y₂)</label><input type="range" id="q2" min="1" max="100" value="35"></div>
+  <div class="control"><label>q(y₃)</label><input type="range" id="q3" min="1" max="100" value="30"></div>
+  <div class="control"><label>q(y₄)</label><input type="range" id="q4" min="1" max="100" value="20"></div>
+</div>
+<div id="spec-readout" style="font-family:monospace; font-size:0.9rem"></div>
+<svg id="spec-chart" width="100%" height="250" viewBox="0 0 600 250"></svg>
+<p style="font-size:0.85rem; color:var(--muted); margin-bottom:0;">深蓝 = 真实 $p$；浅橙 = 投机解码 Monte Carlo 经验分布；接受率 = 单步能直接接受的概率。</p>
+</div>
+
+<!-- ===================== 3.7 ===================== -->
+<h3 id="p3-7">3.7 扩展到序列：归纳法</h3>
+
+<p>真实的投机解码是一次猜 $k$ 个 token，然后按顺序判断接受/拒绝。只要被拒，就<b>停在那里</b>并重采该位置。</p>
+
+<p>写成递推：</p>
+<div class="formula-box">
+\begin{align*}
+\pi(y_{1:k}\mid x) &= \pi(y_1\mid x) \cdot \pi(y_2\mid x, y_1) \cdots \pi(y_k\mid x, y_{1:k-1}) \\
+&\text{（条件概率链式法则）}
+\end{align*}
+</div>
+
+<p>第 $j$ 步条件于前缀 $y_{1:j-1}$，做的就是 3.5 节证过的"单 token 投机解码"，其中 $p_j = p(\cdot\mid x, y_{\lt j})$，$q_j = q(\cdot\mid x, y_{\lt j})$。因此：</p>
+
+<div class="formula-box">
+$$ \pi(y_j\mid x, y_{1:j-1}) = p_j(y_j) = p(y_j\mid x, y_{1:j-1}) $$
+</div>
+
+<p>归纳地</p>
+<div class="formula-box">
+\begin{align*}
+\pi(y_{1:k}\mid x) &= \prod_{j=1}^{k} \pi(y_j\mid x, y_{1:j-1}) \\
+&= \prod_{j=1}^{k} p(y_j\mid x, y_{1:j-1}) \\
+&= p(y_{1:k}\mid x). \qquad\blacksquare
+\end{align*}
+</div>
+
+<div class="note">回到题目：我们证明了单 token 情况下 $\pi = p$，再用链式法则推到整段序列。要点只有两个——<b>(1) 关键恒等式 $\min + (\cdot)_+ = $ 本值；(2) $Z = P_\text{rej}$ 这个巧合。</b></div>
+
+</section>
+
+
+<!-- ======================================================= -->
+<!-- PROBLEM 4 -->
+<!-- ======================================================= -->
+<section id="p4">
+<h2>Problem 4 · AI 使用声明</h2>
+
+<p>本次作业中使用 Claude（Anthropic 的 AI 助手）：</p>
+<ul>
+  <li>💡 <b>思路讨论：</b>对三道题的解题策略做头脑风暴。</li>
+  <li>✍️ <b>文字润色：</b>英语表达清晰度与学术语调。</li>
+  <li>🔣 <b>LaTeX 排版：</b>公式、伪代码和文档结构的格式。</li>
+  <li>✅ <b>结果验证：</b>交叉核对中间推导、行列式计算、恒等式分情况证明。</li>
+</ul>
+<p>所有最终解答均由作者自行审核验证。</p>
+</section>
+
+
+<!-- ======================================================= -->
+<!-- GLOSSARY -->
+<!-- ======================================================= -->
+<section id="glossary">
+<h2>附录 · 符号速查表</h2>
+
+<table>
+<tr><th>符号</th><th>含义</th><th>出现位置</th></tr>
+<tr><td>$L$</td><td>序列长度 / Parallel WaveNet 维度</td><td>P1, P2</td></tr>
+<tr><td>$d$</td><td>Transformer 隐藏维度</td><td>P1</td></tr>
+<tr><td>$d_{\mathrm{ff}} = 4d$</td><td>FFN 中间维度</td><td>P1</td></tr>
+<tr><td>$Q, K, V$</td><td>注意力 query / key / value</td><td>P1</td></tr>
+<tr><td>Mem$^{(\ell)}$</td><td>Transformer-XL 第 $\ell$ 层缓存</td><td>P1</td></tr>
+<tr><td>$M$</td><td>memory 长度</td><td>P1</td></tr>
+<tr><td>$z \sim \mathcal{N}(0, I)$</td><td>归一化流基底</td><td>P2</td></tr>
+<tr><td>$\mu_\theta, \alpha_\theta$</td><td>条件均值、log-scale 网络</td><td>P2</td></tr>
+<tr><td>$J_i$</td><td>第 $i$ 层 Jacobian</td><td>P2</td></tr>
+<tr><td>$p$</td><td>目标（大）模型分布</td><td>P3</td></tr>
+<tr><td>$q$</td><td>草稿（小）模型分布</td><td>P3</td></tr>
+<tr><td>$p_\text{res}$</td><td>残差分布 $(p-q)_+ / Z$</td><td>P3</td></tr>
+<tr><td>$Z$</td><td>残差分布归一化常数 $= P_\text{rej}$</td><td>P3</td></tr>
+<tr><td>$\pi$</td><td>投机解码实际输出分布</td><td>P3</td></tr>
+</table>
+
+</section>
+
+<footer style="margin-top:4rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--muted); font-size:0.88rem">
+<p>DL Assignment 6 讲解 · Pan Changxun · 2024011323</p>
+</footer>
+
+</main>
+</div>
+
+<!-- ================== SCRIPTS ================== -->
+<script>
+// ============== Widget 1: FLOP compare ==============
+(function() {
+  const Lin  = document.getElementById('flop-L');
+  const Din  = document.getElementById('flop-d');
+  const Lval = document.getElementById('flop-L-val');
+  const Dval = document.getElementById('flop-d-val');
+  const out  = document.getElementById('flop-output');
+  const svg  = document.getElementById('flop-chart');
+
+  function update() {
+    const L = +Lin.value, d = +Din.value;
+    Lval.textContent = L.toLocaleString();
+    Dval.textContent = d.toLocaleString();
+    const attn = 4*L*d*d + 2*L*L*d;
+    const ffn  = 8*L*d*d;
+    const tot  = attn + ffn;
+    const fmt  = x => (x/1e9).toFixed(3) + ' GFLOP';
+    out.innerHTML = `<b>Attention</b> = 4Ld² + 2L²d = ${fmt(attn)} &nbsp; (${(100*attn/tot).toFixed(1)}%)<br>
+                     <b>FFN</b>       = 8Ld²        = ${fmt(ffn)}  &nbsp; (${(100*ffn/tot).toFixed(1)}%)`;
+
+    // bar chart
+    const W = 600, H = 220;
+    svg.innerHTML = '';
+    const max = Math.max(attn, ffn);
+    const barW = 160;
+    const y0 = 180;
+    const hA = 150 * attn/max;
+    const hF = 150 * ffn/max;
+
+    // Attention bar
+    let rect1 = `<rect x="100" y="${y0-hA}" width="${barW}" height="${hA}" fill="#2563eb"/>`;
+    let rect2 = `<rect x="340" y="${y0-hF}" width="${barW}" height="${hF}" fill="#7c3aed"/>`;
+    let label1 = `<text x="${100+barW/2}" y="${y0+18}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#2563eb">Attention</text>`;
+    let label2 = `<text x="${340+barW/2}" y="${y0+18}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="#7c3aed">FFN</text>`;
+    let val1 = `<text x="${100+barW/2}" y="${y0-hA-6}" text-anchor="middle" font-family="monospace" font-size="12">${fmt(attn)}</text>`;
+    let val2 = `<text x="${340+barW/2}" y="${y0-hF-6}" text-anchor="middle" font-family="monospace" font-size="12">${fmt(ffn)}</text>`;
+    svg.innerHTML = rect1 + rect2 + label1 + label2 + val1 + val2;
+  }
+  Lin.addEventListener('input', update);
+  Din.addEventListener('input', update);
+  update();
+})();
+
+
+// ============== Widget 2: Flow layer stepper ==============
+(function() {
+  const L = 6;
+  const container = document.getElementById('flow-vec');
+  const label     = document.getElementById('flow-layer-label');
+  const explain   = document.getElementById('flow-explain');
+  const resetBtn  = document.getElementById('flow-reset');
+  const nextBtn   = document.getElementById('flow-next');
+
+  let z0 = [];   // 原始 z
+  let state = [];
+  let step = 0;
+
+  // pseudo mu and alpha
+  function mu(prev)    { const s = prev.reduce((a,b)=>a+b, 0); return 0.4*Math.tanh(s); }
+  function alpha(prev) { const s = prev.reduce((a,b)=>a+b*b, 0); return 0.3*Math.tanh(s-prev.length*0.5); }
+
+  function reset() {
+    z0 = Array.from({length:L}, ()=> (Math.random()*2-1)*1.5);
+    state = [...z0];
+    step = 0;
+    render();
+  }
+
+  function stepOnce() {
+    if (step >= L) return;
+    const i = step;
+    const prev = state.slice(0, i);
+    const m = mu(prev), a = alpha(prev);
+    const before = state[i];
+    state[i] = m + before * Math.exp(a);
+    step += 1;
+    render(i, before, m, a);
+  }
+
+  function render(changedIdx=null, before=null, mVal=null, aVal=null) {
+    container.innerHTML = '';
+    state.forEach((v, j) => {
+      const div = document.createElement('div');
+      div.style.width = '70px';
+      div.style.height = '46px';
+      div.style.display = 'flex';
+      div.style.flexDirection = 'column';
+      div.style.alignItems = 'center';
+      div.style.justifyContent = 'center';
+      div.style.borderRadius = '6px';
+      div.style.fontFamily = 'monospace';
+      div.style.fontSize = '0.85rem';
+      if (j < step) { div.style.background = '#d1fae5'; div.style.color = '#065f46'; }
+      else          { div.style.background = '#dbeafe'; div.style.color = '#1e3a8a'; }
+      if (j === changedIdx) { div.style.boxShadow = '0 0 0 3px #f59e0b'; }
+      const labelT = (j < step) ? `x<sub>${j+1}</sub>` : `z<sub>${j+1}</sub>`;
+      div.innerHTML = `<div>${labelT}</div><div>${v.toFixed(3)}</div>`;
+      container.appendChild(div);
+    });
+    if (step === 0) {
+      label.textContent = '当前：原始 z';
+      explain.textContent = '一串从标准正态采的数。点击 "下一层" 开始应用 T₁。';
+    } else {
+      label.textContent = `已应用：T₁ ... T${step}`;
+      if (changedIdx !== null) {
+        explain.innerHTML = `第 ${step} 层 T<sub>${step}</sub> 只改了第 ${step} 个坐标：<br>
+          x<sub>${step}</sub> = μ(z<sub>&lt;${step}</sub>) + z<sub>${step}</sub> · exp(α(z<sub>&lt;${step}</sub>))
+          = ${mVal.toFixed(3)} + (${before.toFixed(3)}) · exp(${aVal.toFixed(3)})
+          = ${state[step-1].toFixed(3)}`;
+      }
+    }
+  }
+
+  resetBtn.addEventListener('click', reset);
+  nextBtn.addEventListener('click', stepOnce);
+  reset();
+})();
+
+
+// ============== Widget 3: Speculative decoding ==============
+(function() {
+  const K = 4;
+  const chart = document.getElementById('spec-chart');
+  const readout = document.getElementById('spec-readout');
+
+  function normalize(arr) {
+    const s = arr.reduce((a,b)=>a+b,0);
+    return arr.map(v=>v/s);
+  }
+
+  function simulate(p, q, N=20000) {
+    // implement single-token speculative decoding N times
+    const counts = Array(K).fill(0);
+    // residual distribution (p - q)_+ normalized
+    const diff = p.map((pi, i) => Math.max(pi - q[i], 0));
+    const Z = diff.reduce((a,b)=>a+b, 0);
+    const res = Z > 0 ? diff.map(v => v/Z) : Array(K).fill(1/K);
+
+    function sample(dist) {
+      const r = Math.random();
+      let s = 0;
+      for (let i = 0; i < dist.length; i++) {
+        s += dist[i];
+        if (r < s) return i;
+      }
+      return dist.length - 1;
+    }
+
+    for (let n = 0; n < N; n++) {
+      const y = sample(q);
+      const ratio = Math.min(1, p[y] / q[y]);
+      if (Math.random() < ratio) {
+        counts[y]++;
+      } else {
+        counts[sample(res)]++;
+      }
+    }
+    return counts.map(c => c/N);
+  }
+
+  function update() {
+    const p_raw = [1,2,3,4].map(i => +document.getElementById('p'+i).value);
+    const q_raw = [1,2,3,4].map(i => +document.getElementById('q'+i).value);
+    const p = normalize(p_raw);
+    const q = normalize(q_raw);
+    const emp = simulate(p, q, 20000);
+    const acc = p.map((pi,i) => Math.min(pi, q[i])).reduce((a,b)=>a+b,0);
+
+    // chart
+    const W = 600, H = 250;
+    chart.innerHTML = '';
+    const barW = 50, gap = 4, groupW = barW*2 + gap;
+    const xStart = 80;
+    const y0 = 200;
+    const maxVal = Math.max(...p, ...emp) * 1.15;
+    for (let i = 0; i < K; i++) {
+      const xg = xStart + i * (groupW + 40);
+      const hP = 150 * p[i] / maxVal;
+      const hE = 150 * emp[i] / maxVal;
+      chart.innerHTML += `<rect x="${xg}" y="${y0-hP}" width="${barW}" height="${hP}" fill="#1e40af"/>`;
+      chart.innerHTML += `<rect x="${xg+barW+gap}" y="${y0-hE}" width="${barW}" height="${hE}" fill="#f59e0b"/>`;
+      chart.innerHTML += `<text x="${xg+barW}" y="${y0+16}" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#374151">y${i+1}</text>`;
+      chart.innerHTML += `<text x="${xg+barW/2}" y="${y0-hP-4}" text-anchor="middle" font-family="monospace" font-size="10" fill="#1e40af">${p[i].toFixed(3)}</text>`;
+      chart.innerHTML += `<text x="${xg+barW+gap+barW/2}" y="${y0-hE-4}" text-anchor="middle" font-family="monospace" font-size="10" fill="#d97706">${emp[i].toFixed(3)}</text>`;
+    }
+    // legend
+    chart.innerHTML += `<rect x="420" y="20" width="14" height="14" fill="#1e40af"/><text x="440" y="32" font-family="sans-serif" font-size="12" fill="#374151">p (真实目标)</text>`;
+    chart.innerHTML += `<rect x="420" y="40" width="14" height="14" fill="#f59e0b"/><text x="440" y="52" font-family="sans-serif" font-size="12" fill="#374151">π 经验 (spec-dec)</text>`;
+
+    // readout
+    readout.innerHTML = `p = [${p.map(x=>x.toFixed(3)).join(', ')}]<br>
+                         q = [${q.map(x=>x.toFixed(3)).join(', ')}]<br>
+                         单步接受率 = Σ min(p,q) = <b>${acc.toFixed(3)}</b> &nbsp;|&nbsp;
+                         拒绝归一化 Z = 1 - 接受率 = <b>${(1-acc).toFixed(3)}</b>`;
+  }
+
+  for (let i = 1; i <= K; i++) {
+    document.getElementById('p'+i).addEventListener('input', update);
+    document.getElementById('q'+i).addEventListener('input', update);
+  }
+  update();
+})();
+
+
+// ============== Sticky TOC active tracking ==============
+(function() {
+  const links = document.querySelectorAll('nav.toc a');
+  const sections = Array.from(links).map(a => {
+    const id = a.getAttribute('href').slice(1);
+    return { link: a, el: document.getElementById(id) };
+  }).filter(x => x.el);
+
+  function onScroll() {
+    const y = window.scrollY + 120;
+    let active = sections[0];
+    for (const s of sections) {
+      if (s.el.offsetTop <= y) active = s;
+    }
+    links.forEach(a => a.classList.remove('active'));
+    if (active) active.link.classList.add('active');
+  }
+  document.addEventListener('scroll', onScroll);
+  onScroll();
+})();
+</script>
+
+</body>
+</html>

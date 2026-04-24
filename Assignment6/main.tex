@@ -1,0 +1,256 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tikz}
+
+\newcounter{placeholderCount}
+\newcommand{\placeholder}[1]{{
+    \stepcounter{placeholderCount}
+    \color{red} [#1]
+}}
+
+\newcounter{solutionCount}
+\newcommand{\solution}[1]{
+    \stepcounter{solutionCount}
+    \paragraph{Solution \thesolutionCount.}
+    {
+        #1
+    }
+}
+
+\title{
+    Deep Learning (Spring 2026) \\
+    Solution for Assignment 6
+}
+\author{
+    Pan Changxun
+    \\
+    2024011323
+}
+
+\begin{document}
+
+\maketitle
+
+%% Problem 1 (Transformer, 30 pts)
+\solution{
+    \begin{enumerate}
+        \item \textbf{Most computationally expensive block.}
+
+        A vanilla transformer layer is composed of a multi-head self-attention (MHSA) sub-layer and a position-wise feed-forward (FFN) sub-layer. For a sequence of length $L$ and model dimension $d$ (with FFN hidden dimension $d_{\mathrm{ff}} = 4d$), the dominant FLOP counts per layer are:
+        \begin{align*}
+            \text{MHSA}: & \quad \underbrace{4 \, L \, d^2}_{\text{Q, K, V, O projections}} \;+\; \underbrace{2 \, L^2 \, d}_{\text{attention scores and aggregation}}, \\
+            \text{FFN}: & \quad \underbrace{2 \, L \, d \, d_{\mathrm{ff}}}_{\text{two linear maps}} \;=\; 8 \, L \, d^2.
+        \end{align*}
+        When the sequence is long enough that $L \gg d$, the quadratic term $2 L^2 d$ in self-attention dominates. This is precisely the regime that causes the training-memory blow-up mentioned in the question: the $L \times L$ attention matrix has to be materialized for both the forward pass and the backward pass (to compute gradients through softmax), so GPU memory grows as $\Theta(L^2)$ per head per layer. Therefore the \textbf{multi-head self-attention block is the most computationally expensive part of a vanilla transformer}, because its cost and memory footprint scale \emph{quadratically} in the sequence length, whereas the FFN scales only linearly.
+
+        \item \textbf{Truncated-BPTT analogue for transformers.}
+
+        Truncated BPTT for RNNs splits a long sequence into fixed-length segments, processes them sequentially, carries the last hidden state across segments as a ``context,'' and \emph{stops gradients} from flowing back through that context. We can do the same thing for transformers by adapting the Transformer-XL recurrence mechanism of Dai et al.~(2019).
+
+        \textbf{Key idea.} Partition the long input $x_{1:N}$ into $T$ consecutive segments $s_1, s_2, \ldots, s_T$, each of length $L$ (with $N = T L$). For every layer $\ell$ we maintain a \emph{memory cache} $M^{(\ell)}$ that stores the hidden states produced for the previous segment(s) at layer $\ell$. When processing the current segment we let each layer attend over the concatenation of its cache and the current-segment activations, but we \emph{detach} the cache before using it so no gradient flows back into earlier segments. Because segment boundaries change absolute positions, we use \emph{relative} positional encoding so that attention scores only depend on token offsets. This gives transformers the same linear-in-$N$ memory profile that truncated BPTT gives RNNs, at the cost of a bias of $O(L M)$ steps beyond which gradients are truncated (here $M = |M^{(\ell)}|$ is the cache length).
+
+        \textbf{Pseudo-code.} Let $D$ be the number of transformer layers, $L$ the segment length, and $M$ the memory length (typically $M \in \{L, 2L\}$).
+
+        \begin{center}
+        \fbox{\begin{minipage}{0.95\linewidth}
+        \textbf{Algorithm: Truncated BPTT for a Transformer (Transformer-XL style).}
+        \begin{flushleft}
+        \textbf{Input:} long sequence $x_{1:N}$; segment length $L$; memory length $M$; number of layers $D$; parameters $\theta$.\\
+        \textbf{Output:} trained parameters $\theta$.
+        \end{flushleft}
+        \begin{enumerate}
+            \item Partition $x_{1:N}$ into segments $s_1, s_2, \ldots, s_T$ of length~$L$.
+            \item Initialize $\mathrm{Mem}^{(\ell)} \leftarrow \emptyset$ for $\ell = 0, 1, \ldots, D-1$. \hfill{\small\emph{(empty memory per layer)}}
+            \item \textbf{For} $t = 1, 2, \ldots, T$ \textbf{do} \hfill{\small\emph{(iterate over segments)}}
+            \begin{enumerate}
+                \item $h^{(0)} \leftarrow \mathrm{Embed}(s_t)$ \hfill{\small\emph{(shape $L \times d$)}}
+                \item \textbf{For} $\ell = 1, 2, \ldots, D$ \textbf{do}
+                \begin{enumerate}
+                    \item $\tilde{h}^{(\ell-1)} \leftarrow \mathrm{concat}\bigl(\mathrm{stop\_grad}(\mathrm{Mem}^{(\ell-1)}),\; h^{(\ell-1)}\bigr)$ \\
+                        \hspace*{2em}{\small\emph{(detach memory -- this is where BPTT is truncated)}}
+                    \item $h^{(\ell)} \leftarrow \mathrm{TransformerLayer}_\ell\bigl(Q = h^{(\ell-1)},\; K = V = \tilde{h}^{(\ell-1)};\; \text{relative pos.~enc.}\bigr)$
+                \end{enumerate}
+                \item $\mathcal{L}_t \leftarrow \mathrm{CrossEntropy}\bigl(\mathrm{Out}(h^{(D)}),\; \text{targets of } s_t\bigr)$.
+                \item Backpropagate $\mathcal{L}_t$ and update $\theta$. \hfill{\small\emph{(gradient does not cross $\mathrm{stop\_grad}$)}}
+                \item \textbf{For} $\ell = 0, 1, \ldots, D-1$ \textbf{do} \hfill{\small\emph{(refresh memory)}}
+                \begin{enumerate}
+                    \item $\mathrm{Mem}^{(\ell)} \leftarrow \mathrm{stop\_grad}\bigl(\text{last $M$ rows of } \mathrm{concat}(\mathrm{Mem}^{(\ell)},\, h^{(\ell)})\bigr)$
+                \end{enumerate}
+            \end{enumerate}
+        \end{enumerate}
+        \end{minipage}}
+        \end{center}
+
+        \textbf{Why this works.}
+        \begin{itemize}
+            \item \emph{Memory is bounded.} At any moment we only store $O\bigl(D \cdot (L + M) \cdot d\bigr)$ activations, instead of $O(D \cdot N \cdot d)$ for the naive case.
+            \item \emph{Gradients are truncated.} Because $M^{(\ell)}$ is detached, back-prop at step $t$ only traverses the current segment, analogous to truncated BPTT for RNNs.
+            \item \emph{Context is preserved.} Forward attention still reaches $M$ tokens into the past at every layer; stacking $D$ layers effectively extends the receptive field by $D\cdot M$ tokens.
+            \item \emph{Positions remain consistent.} Using relative positional encoding is essential -- with the vanilla absolute encoding, tokens in $M^{(\ell)}$ and in $s_t$ would carry overlapping position embeddings across segments.
+        \end{itemize}
+    \end{enumerate}
+}
+
+%% Problem 2 (Parallel WaveNet as a normalizing flow, 30 pts)
+\solution{
+    We construct the map $z \mapsto x$ as an $L$-fold composition of elementary affine-coupling layers, each of which alters exactly one coordinate.
+
+    \textbf{Layer definition.} Let $w^{(0)} \triangleq z \in \mathbb{R}^L$ and write $w^{(i)}_{<i} = (w^{(i)}_1, \ldots, w^{(i)}_{i-1})$. Define the $i$-th layer $T_i : \mathbb{R}^L \to \mathbb{R}^L$, for $i = 1, 2, \ldots, L$, by
+    \begin{equation}
+        \bigl(T_i(w)\bigr)_j = \begin{cases}
+            w_j, & j \neq i, \\[2pt]
+            \mu_\theta\bigl(w_1, \ldots, w_{i-1}\bigr) \;+\; w_i \cdot \exp\bigl(\alpha_\theta\bigl(w_1, \ldots, w_{i-1}\bigr)\bigr), & j = i,
+        \end{cases}
+        \label{eq:layer}
+    \end{equation}
+    and set $w^{(i)} = T_i(w^{(i-1)})$, so that the full flow is
+    \begin{equation*}
+        x \;=\; T(z) \;=\; \bigl(T_L \circ T_{L-1} \circ \cdots \circ T_1\bigr)(z).
+    \end{equation*}
+    At the input to $T_i$ we have $w^{(i-1)}_j = x_j$ for $j < i$ and $w^{(i-1)}_j = z_j$ for $j \geq i$ (earlier layers have only rewritten coordinates $1, \ldots, i-1$). Since the map $(z_1,\ldots,z_{i-1}) \leftrightarrow (x_1,\ldots,x_{i-1})$ produced by the earlier layers is a bijection, conditioning on $w^{(i-1)}_{<i} = x_{<i}$ is equivalent to conditioning on $z_{<i}$; in other words the Parallel WaveNet formula $x_i = \mu_\theta(z_{1:i-1}) + z_i \exp(\alpha_\theta(z_{1:i-1}))$ is reproduced exactly by~\eqref{eq:layer}.
+
+    \textbf{Invertibility of each layer.} Because $w_j$ is unchanged for $j \neq i$ and $\exp(\alpha_\theta(\cdot)) > 0$ everywhere, $T_i$ admits a closed-form inverse:
+    \begin{equation*}
+        \bigl(T_i^{-1}(w')\bigr)_i \;=\; \frac{w'_i \;-\; \mu_\theta(w'_{<i})}{\exp\bigl(\alpha_\theta(w'_{<i})\bigr)}, \qquad \bigl(T_i^{-1}(w')\bigr)_j = w'_j \;\; (j \neq i).
+    \end{equation*}
+    Composition of bijections is a bijection, so $T = T_L \circ \cdots \circ T_1$ is invertible.
+
+    \textbf{Jacobian of each layer.} The Jacobian $J_i \triangleq \partial T_i(w) / \partial w$ has unit rows for every $j \neq i$ (since those coordinates are copied through) and a single non-trivial row at index $i$:
+    \begin{equation*}
+        \bigl(J_i\bigr)_{ij} \;=\; \begin{cases}
+            \exp\bigl(\alpha_\theta(w_{<i})\bigr), & j = i, \\[2pt]
+            \frac{\partial \mu_\theta(w_{<i})}{\partial w_j} \;+\; w_i\,\exp\bigl(\alpha_\theta(w_{<i})\bigr)\,\frac{\partial \alpha_\theta(w_{<i})}{\partial w_j}, & j < i, \\[2pt]
+            0, & j > i.
+        \end{cases}
+    \end{equation*}
+    Therefore $J_i$ is \emph{lower triangular} with diagonal
+    \[
+        \mathrm{diag}(J_i) \;=\; \bigl(1,\; \ldots,\; 1,\; \underbrace{\exp\bigl(\alpha_\theta(w_{<i})\bigr)}_{\text{position }i},\; 1,\; \ldots,\; 1\bigr),
+    \]
+    and its determinant is simply
+    \begin{equation}
+        \det(J_i) \;=\; \exp\bigl(\alpha_\theta\bigl(w^{(i-1)}_{<i}\bigr)\bigr) \;=\; \exp\bigl(\alpha_\theta(z_{1:i-1})\bigr).
+        \label{eq:det-layer}
+    \end{equation}
+
+    \textbf{Why the composition is a valid flow.} A valid normalizing flow is (i) a diffeomorphism whose (ii) log-determinant is tractable. We have shown (i) above. For (ii), the Jacobian of the composition factorizes via the chain rule:
+    \begin{equation*}
+        \frac{\partial x}{\partial z} \;=\; J_L \,\cdot\, J_{L-1} \,\cdots\, J_1,
+        \qquad
+        \log\bigl|\det(\partial x / \partial z)\bigr| \;=\; \sum_{i=1}^{L} \log\bigl|\det(J_i)\bigr| \;=\; \sum_{i=1}^{L} \alpha_\theta(z_{1:i-1}),
+    \end{equation*}
+    using~\eqref{eq:det-layer}. Both terms can be computed in one pass over the $L$ coordinates, so the flow is efficient. By the change-of-variables formula,
+    \begin{equation*}
+        \log p_X(x) \;=\; \log p_Z(z) \;-\; \sum_{i=1}^{L} \alpha_\theta(z_{1:i-1})
+        \;=\; -\frac{1}{2}\sum_{i=1}^{L} z_i^2 \;-\; \frac{L}{2}\log(2\pi) \;-\; \sum_{i=1}^{L} \alpha_\theta(z_{1:i-1}),
+    \end{equation*}
+    which is the tractable log-likelihood of the Parallel WaveNet flow. Hence the $L$-layer construction~\eqref{eq:layer} yields a valid normalizing flow that realizes the generative process of Parallel WaveNet. $\hfill\blacksquare$
+}
+
+%% Problem 3 (Speculative decoding preserves the target distribution, 30 pts)
+\solution{
+    Fix an input $x$. We prove the result in two steps: a single-token lemma, then an induction on sequence length.
+
+    \textbf{Setup.} At a given position, write $p(y) \triangleq p(y \mid x, y_{<})$ for the target's next-token distribution and $q(y) \triangleq q(y \mid x, y_{<})$ for the draft's, where $y_{<}$ is the already-generated prefix. Speculative decoding uses the following single-step acceptance rule (Leviathan et al.~2023):
+    \begin{enumerate}
+        \item[(a)] Draw a candidate $\tilde y \sim q$.
+        \item[(b)] Draw $r \sim \mathrm{Uniform}(0,1)$. If $r \le \min\!\bigl(1,\, p(\tilde y)/q(\tilde y)\bigr)$, \emph{accept} and output $\tilde y$.
+        \item[(c)] Otherwise \emph{reject} and output a fresh sample $y^\star$ drawn from the \emph{residual distribution}
+        \begin{equation}
+            p_{\mathrm{res}}(y) \;\triangleq\; \frac{\bigl(p(y) - q(y)\bigr)_{+}}{Z}, \qquad
+            Z \;=\; \sum_{y'} \bigl(p(y') - q(y')\bigr)_{+},
+            \label{eq:residual}
+        \end{equation}
+        where $(a)_+ \triangleq \max(a, 0)$.
+    \end{enumerate}
+
+    \textbf{Lemma (single-token correctness).} \emph{Under the rule above, the output token $Y$ satisfies $\Pr[Y = y] = p(y)$ for every $y$.}
+
+    \emph{Proof.} A useful identity, provable by a case split on the sign of $p - q$, is
+    \begin{equation}
+        \min(p(y), q(y)) \;+\; \bigl(p(y) - q(y)\bigr)_{+} \;=\; p(y) \qquad \text{for every } y.
+        \label{eq:minmax}
+    \end{equation}
+    Summing~\eqref{eq:minmax} over $y$ gives
+    \begin{equation}
+        Z \;=\; \sum_{y} \bigl(p(y) - q(y)\bigr)_{+} \;=\; 1 \;-\; \sum_{y} \min(p(y), q(y)).
+        \label{eq:Z}
+    \end{equation}
+    The probability that a candidate is accepted is
+    \begin{equation*}
+        P_{\mathrm{acc}} \;=\; \sum_{y} q(y) \cdot \min\!\bigl(1,\, p(y)/q(y)\bigr) \;=\; \sum_{y} \min\bigl(q(y),\, p(y)\bigr),
+    \end{equation*}
+    so the probability of rejection is exactly
+    \begin{equation}
+        P_{\mathrm{rej}} \;=\; 1 - P_{\mathrm{acc}} \;=\; 1 - \sum_{y} \min(p(y), q(y)) \;\overset{\eqref{eq:Z}}{=}\; Z.
+        \label{eq:reject}
+    \end{equation}
+
+    Fix any $y$. There are two disjoint ways to output $y$:
+    \begin{itemize}
+        \item \emph{Accepted path:} the draft proposed $y$ and it was accepted. Its probability is
+        \[
+            q(y) \cdot \min\!\bigl(1,\, p(y)/q(y)\bigr) \;=\; \min\bigl(q(y), p(y)\bigr).
+        \]
+        \item \emph{Rejected path:} \emph{some} draft token was rejected, and the resample landed on $y$. Its probability is
+        \[
+            P_{\mathrm{rej}} \cdot p_{\mathrm{res}}(y) \;=\; Z \cdot \frac{\bigl(p(y) - q(y)\bigr)_{+}}{Z} \;=\; \bigl(p(y) - q(y)\bigr)_{+},
+        \]
+        where we used~\eqref{eq:reject} in the first step.
+    \end{itemize}
+    Adding the two contributions and applying~\eqref{eq:minmax},
+    \begin{equation*}
+        \Pr[Y = y] \;=\; \min\bigl(q(y), p(y)\bigr) \;+\; \bigl(p(y) - q(y)\bigr)_{+} \;=\; p(y),
+    \end{equation*}
+    which proves the lemma. $\hfill\square$
+
+    \textbf{Extension to sequences.} Speculative decoding processes the drafted block $\tilde y_1, \ldots, \tilde y_k$ one position at a time. Writing $y_{1:j-1}$ for the already-committed prefix, at position $j$ the procedure applies exactly the single-token rule to
+    \[
+        p_j(\cdot) \;=\; p(\cdot \mid x, y_{1:j-1}), \qquad q_j(\cdot) \;=\; q(\cdot \mid x, y_{1:j-1}).
+    \]
+    (When $\tilde y_j$ is rejected, sampling the resample from $(p_j - q_j)_+ / Z_j$ terminates the block at position~$j$, which is the same as executing the single-token rule and then stopping.)
+
+    We now prove the target-preservation claim $\pi(y_{1:k} \mid x) = p(y_{1:k} \mid x)$ by induction on $k$.
+
+    \emph{Base case} ($k = 1$): direct from the lemma.
+
+    \emph{Inductive step}: assume $\pi(y_{1:k-1} \mid x) = p(y_{1:k-1} \mid x)$. Conditioned on any particular prefix $y_{1:k-1}$, position $k$ applies the single-token rule to $p_k, q_k$, so by the lemma
+    \[
+        \pi(y_k \mid x, y_{1:k-1}) \;=\; p_k(y_k) \;=\; p(y_k \mid x, y_{1:k-1}).
+    \]
+    Multiplying by the inductive hypothesis,
+    \begin{equation*}
+        \pi(y_{1:k} \mid x) \;=\; \pi(y_{1:k-1} \mid x) \cdot \pi(y_k \mid x, y_{1:k-1})
+        \;=\; p(y_{1:k-1} \mid x) \cdot p(y_k \mid x, y_{1:k-1}) \;=\; p(y_{1:k} \mid x).
+    \end{equation*}
+
+    By induction, $\pi(y_{1:k} \mid x) = p(y_{1:k} \mid x)$ for every $k \ge 1$, so the speculative-decoding procedure preserves the target model's distribution exactly. $\hfill\blacksquare$
+}
+
+%% Problem 4 (AI Usage Disclosure, 10 pts)
+\solution{
+    Used Claude (AI assistant by Anthropic) in the following capacities:
+    \begin{itemize}
+        \item \textbf{Solution ideation:} Brainstorming approaches and generating initial ideas for problem-solving strategies, in particular for structuring the transformer truncated-BPTT algorithm, the normalizing-flow construction, and the speculative-decoding correctness proof.
+        \item \textbf{English grammar and writing:} Polishing and refining the English writing throughout the solutions to improve clarity, coherence, and academic tone.
+        \item \textbf{\LaTeX{} formatting:} Optimizing typesetting and layout of mathematical expressions, pseudo-code, and document structure for better readability and presentation.
+        \item \textbf{Result verification:} Cross-checking the correctness of intermediate derivations, the Jacobian determinant computation in Problem~2, and the case-split identity used in Problem~3.
+    \end{itemize}
+    All final solutions were reviewed and verified by the author.
+}
+
+\ifnum\value{placeholderCount}>0
+    \vfill
+    \begin{center}
+        \color{red} \framebox{\textbf{WARNING: PLEASE REMOVE ALL PLACEHOLDERS BEFORE SUBMISSION}}
+    \end{center}
+\fi
+
+\end{document}
