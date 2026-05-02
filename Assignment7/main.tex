@@ -1,0 +1,241 @@
+\documentclass{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tikz}
+
+\newcounter{placeholderCount}
+\newcommand{\placeholder}[1]{{
+    \stepcounter{placeholderCount}
+    \color{red} [#1]
+}}
+
+\newcounter{solutionCount}
+\newcommand{\solution}[1]{
+    \stepcounter{solutionCount}
+    \paragraph{Solution \thesolutionCount.}
+    {
+        #1
+    }
+}
+
+\title{
+    Deep Learning (Spring 2026) \\
+    Solution for Assignment 7
+}
+\author{
+    Pan Changxun
+    \\
+    2024011323
+}
+
+\begin{document}
+
+\maketitle
+
+%% Problem 1 (True or False, 10 pts)
+\solution{
+    \textbf{True.} \\
+    Adding noise to the continuous embedding vectors of a sequence of discrete tokens (words) and then applying a reverse diffusion process (with conditional resampling/rounding to map back to discrete tokens) is a valid approach for text generation using diffusion models (e.g., as proposed in Diffusion-LM).
+}
+
+%% Problem 2 (DDPM Objective, 20 pts)
+\solution{
+    \begin{enumerate}
+        \item \textbf{Prove $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon$:} \\
+        We have the forward process step:
+        \begin{equation*}
+            x_t = \sqrt{\alpha_t} x_{t-1} + \sqrt{1 - \alpha_t} \epsilon_{t-1}
+        \end{equation*}
+        Substituting $x_{t-1} = \sqrt{\alpha_{t-1}} x_{t-2} + \sqrt{1 - \alpha_{t-1}} \epsilon_{t-2}$ into the equation for $x_t$:
+        \begin{align*}
+            x_t &= \sqrt{\alpha_t} \left( \sqrt{\alpha_{t-1}} x_{t-2} + \sqrt{1 - \alpha_{t-1}} \epsilon_{t-2} \right) + \sqrt{1 - \alpha_t} \epsilon_{t-1} \\
+            &= \sqrt{\alpha_t \alpha_{t-1}} x_{t-2} + \left( \sqrt{\alpha_t(1 - \alpha_{t-1})} \epsilon_{t-2} + \sqrt{1 - \alpha_t} \epsilon_{t-1} \right)
+        \end{align*}
+        Since $\epsilon_{t-2}$ and $\epsilon_{t-1}$ are independent standard normal variables, the linear combination of them is also Gaussian with mean 0 and variance:
+        \begin{equation*}
+            \alpha_t(1 - \alpha_{t-1}) + (1 - \alpha_t) = \alpha_t - \alpha_t \alpha_{t-1} + 1 - \alpha_t = 1 - \alpha_t \alpha_{t-1}
+        \end{equation*}
+        Thus, $x_t = \sqrt{\alpha_t \alpha_{t-1}} x_{t-2} + \sqrt{1 - \alpha_t \alpha_{t-1}} \tilde{\epsilon}_{t-2}$, where $\tilde{\epsilon}_{t-2} \sim \mathcal{N}(0, I)$.
+        By repeating this substitution process recursively down to $x_0$, we obtain:
+        \begin{equation*}
+            x_t = \sqrt{\prod_{i=1}^t \alpha_i} \, x_0 + \sqrt{1 - \prod_{i=1}^t \alpha_i} \, \epsilon = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon, \quad \epsilon \sim \mathcal{N}(0, I)
+        \end{equation*}
+        This shows that $q(x_t|x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)I)$.
+
+        \item \textbf{Prove $q(x_{t-1}|x_t, x_0)$ is a Gaussian with mean $\tilde{\mu}_t$:} \\
+        Using Bayes' theorem and the Markov property:
+        \begin{equation*}
+            q(x_{t-1}|x_t, x_0) = \frac{q(x_t|x_{t-1}, x_0) q(x_{t-1}|x_0)}{q(x_t|x_0)} = \frac{q(x_t|x_{t-1}) q(x_{t-1}|x_0)}{q(x_t|x_0)}
+        \end{equation*}
+        Since all distributions on the right-hand side are Gaussian, $q(x_{t-1}|x_t, x_0)$ is also Gaussian. We can find its mean and variance by analyzing the exponent of the product of these Gaussian PDFs. The exponent (ignoring constants) is:
+        \begin{align*}
+            -\frac{1}{2} &\left( \frac{\|x_t - \sqrt{\alpha_t} x_{t-1}\|^2}{1 - \alpha_t} + \frac{\|x_{t-1} - \sqrt{\bar{\alpha}_{t-1}} x_0\|^2}{1 - \bar{\alpha}_{t-1}} - \frac{\|x_t - \sqrt{\bar{\alpha}_t} x_0\|^2}{1 - \bar{\alpha}_t} \right) \\
+            &= -\frac{1}{2} \left( x_{t-1}^T \left[ \frac{\alpha_t}{1 - \alpha_t} + \frac{1}{1 - \bar{\alpha}_{t-1}} \right] I x_{t-1} - 2 x_{t-1}^T \left[ \frac{\sqrt{\alpha_t}}{1 - \alpha_t} x_t + \frac{\sqrt{\bar{\alpha}_{t-1}}}{1 - \bar{\alpha}_{t-1}} x_0 \right] + C(x_t, x_0) \right)
+        \end{align*}
+        The precision (inverse variance) matrix is $\left( \frac{\alpha_t(1 - \bar{\alpha}_{t-1}) + (1 - \alpha_t)}{(1 - \alpha_t)(1 - \bar{\alpha}_{t-1})} \right) I = \frac{1 - \bar{\alpha}_t}{(1 - \alpha_t)(1 - \bar{\alpha}_{t-1})} I$.
+        Thus, the variance is $\tilde{\beta}_t = \frac{(1 - \alpha_t)(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}$.
+        The mean $\tilde{\mu}_t$ is obtained by multiplying the variance with the linear coefficient:
+        \begin{equation*}
+            \tilde{\mu}_t = \tilde{\beta}_t \left( \frac{\sqrt{\alpha_t}}{1 - \alpha_t} x_t + \frac{\sqrt{\bar{\alpha}_{t-1}}}{1 - \bar{\alpha}_{t-1}} x_0 \right) = \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t} x_t + \frac{\sqrt{\bar{\alpha}_{t-1}}(1 - \alpha_t)}{1 - \bar{\alpha}_t} x_0
+        \end{equation*}
+        From the reparameterization in part 1, we know $x_0 = \frac{x_t - \sqrt{1 - \bar{\alpha}_t}\epsilon}{\sqrt{\bar{\alpha}_t}}$. Substituting $x_0$ into the mean formula and using $\sqrt{\bar{\alpha}_t} = \sqrt{\alpha_t} \sqrt{\bar{\alpha}_{t-1}}$:
+        \begin{align*}
+            \tilde{\mu}_t &= \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t} x_t + \frac{\sqrt{\bar{\alpha}_{t-1}}(1 - \alpha_t)}{1 - \bar{\alpha}_t} \left( \frac{x_t - \sqrt{1 - \bar{\alpha}_t}\epsilon}{\sqrt{\alpha_t} \sqrt{\bar{\alpha}_{t-1}}} \right) \\
+            &= \left( \frac{\alpha_t(1 - \bar{\alpha}_{t-1}) + 1 - \alpha_t}{\sqrt{\alpha_t}(1 - \bar{\alpha}_t)} \right) x_t - \frac{1 - \alpha_t}{\sqrt{\alpha_t} \sqrt{1 - \bar{\alpha}_t}} \epsilon \\
+            &= \frac{1}{\sqrt{\alpha_t}} x_t - \frac{1 - \alpha_t}{\sqrt{\alpha_t} \sqrt{1 - \bar{\alpha}_t}} \epsilon = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon \right)
+        \end{align*}
+
+        \item \textbf{Show the VLB inequality and equality:} \\
+        First, we derive the variational lower bound using the non-negativity of KL divergence:
+        \begin{align*}
+            -\log p_\theta(x_0) &\leq -\log p_\theta(x_0) + D_{\mathrm{KL}}(q(x_{1:T}|x_0) \| p_\theta(x_{1:T}|x_0)) \\
+            &= -\log p_\theta(x_0) + \mathbb{E}_{q(x_{1:T}|x_0)} \left[ \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{1:T}|x_0)} \right] \\
+            &= \mathbb{E}_{q(x_{1:T}|x_0)} \left[ \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{1:T}|x_0) p_\theta(x_0)} \right] = \mathbb{E}_{q(x_{1:T}|x_0)} \left[ \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{0:T})} \right]
+        \end{align*}
+        Taking the expectation $\mathbb{E}_{q(x_0)}$ on both sides gives the first inequality:
+        \begin{equation*}
+            \mathbb{E}_{q(x_{0:T})} \left[ \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{0:T})} \right] \geq -\mathbb{E}_{q(x_0)} \log p_\theta(x_0)
+        \end{equation*}
+
+        Next, we expand the term inside the expectation:
+        \begin{equation*}
+            \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{0:T})} = \log \frac{\prod_{t=1}^T q(x_t|x_{t-1})}{p_\theta(x_T) \prod_{t=1}^T p_\theta(x_{t-1}|x_t)}
+        \end{equation*}
+        Using Bayes' rule $q(x_t|x_{t-1}) = q(x_t|x_{t-1}, x_0) = \frac{q(x_{t-1}|x_t, x_0) q(x_t|x_0)}{q(x_{t-1}|x_0)}$ for $t \ge 2$, the product of forward conditionals can be rewritten as a telescoping product:
+        \begin{equation*}
+            \prod_{t=1}^T q(x_t|x_{t-1}) = q(x_1|x_0) \prod_{t=2}^T \frac{q(x_{t-1}|x_t, x_0) q(x_t|x_0)}{q(x_{t-1}|x_0)} = q(x_T|x_0) \prod_{t=2}^T q(x_{t-1}|x_t, x_0)
+        \end{equation*}
+        Substituting this back into the log ratio:
+        \begin{align*}
+            \log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{0:T})} &= \log \left( \frac{q(x_T|x_0)}{p_\theta(x_T)} \cdot \prod_{t=2}^T \frac{q(x_{t-1}|x_t, x_0)}{p_\theta(x_{t-1}|x_t)} \cdot \frac{1}{p_\theta(x_0|x_1)} \right) \\
+            &= \log \frac{q(x_T|x_0)}{p_\theta(x_T)} + \sum_{t=2}^T \log \frac{q(x_{t-1}|x_t, x_0)}{p_\theta(x_{t-1}|x_t)} - \log p_\theta(x_0|x_1)
+        \end{align*}
+        Taking the expectation over $q(x_{0:T})$, the first term becomes $D_{\mathrm{KL}}(q(x_T|x_0) \| p_\theta(x_T))$ which is $L_T$. The summation term becomes $\sum_{t=2}^T D_{\mathrm{KL}}(q(x_{t-1}|x_t, x_0) \| p_\theta(x_{t-1}|x_t))$ which are the $L_{t-1}$ terms, and the last term becomes $-\log p_\theta(x_0|x_1)$ which is $L_0$. This completes the proof.
+
+        \item \textbf{Prove the rewritten formula for $L_t$:} \\
+        We are given:
+        \begin{equation*}
+            L_t = \mathbb{E}_{x_0, \epsilon} \left[ \frac{1}{2 \|\Sigma_\theta\|_2^2} \|\tilde{\mu}_t(x_t, x_0) - \mu_\theta(x_t, t)\|^2 \right]
+        \end{equation*}
+        Substituting the expressions for $\tilde{\mu}_t$ (from part 2) and $\mu_\theta(x_t, t)$:
+        \begin{align*}
+            \tilde{\mu}_t(x_t, x_0) - \mu_\theta(x_t, t) &= \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon \right) - \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon_\theta(x_t, t) \right) \\
+            &= - \frac{1 - \alpha_t}{\sqrt{\alpha_t} \sqrt{1 - \bar{\alpha}_t}} \big( \epsilon - \epsilon_\theta(x_t, t) \big)
+        \end{align*}
+        Taking the squared $L_2$ norm of this difference:
+        \begin{equation*}
+            \|\tilde{\mu}_t(x_t, x_0) - \mu_\theta(x_t, t)\|^2 = \frac{(1 - \alpha_t)^2}{\alpha_t (1 - \bar{\alpha}_t)} \|\epsilon - \epsilon_\theta(x_t, t)\|^2
+        \end{equation*}
+        Substituting this back into $L_t$ and noting that $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon$:
+        \begin{equation*}
+            L_t = \mathbb{E}_{x_0, \epsilon} \left[ \frac{(1 - \alpha_t)^2}{2 \alpha_t (1 - \bar{\alpha}_t) \|\Sigma_\theta\|_2^2} \left\| \epsilon - \epsilon_\theta(\sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon, t) \right\|^2 \right]
+        \end{equation*}
+        which is exactly the target formula.
+    \end{enumerate}
+}
+
+%% Problem 3 (Fisher Divergence, 20 pts)
+\solution{
+    Expanding the squared $L_2$ norm inside the expectation of the Fisher divergence:
+    \begin{align*}
+        F(p_{\mathrm{data}} \| p_\theta) &= \frac{1}{2} \mathbb{E}_{x \sim p_{\mathrm{data}}} \left[ \|\nabla_x \log p_{\mathrm{data}}(x) - \nabla_x \log p_\theta(x)\|^2_2 \right] \\
+        &= \frac{1}{2} \mathbb{E}_{x \sim p_{\mathrm{data}}} \left[ \|\nabla_x \log p_{\mathrm{data}}(x)\|^2_2 + \|\nabla_x \log p_\theta(x)\|^2_2 - 2 \nabla_x \log p_{\mathrm{data}}(x)^T \nabla_x \log p_\theta(x) \right]
+    \end{align*}
+    The first term $\frac{1}{2} \mathbb{E}_{x \sim p_{\mathrm{data}}} \|\nabla_x \log p_{\mathrm{data}}(x)\|^2_2$ does not depend on $\theta$ and can be absorbed into the constant $Const.$.
+    Now, consider the cross term:
+    \begin{align*}
+        - \mathbb{E}_{x \sim p_{\mathrm{data}}} \left[ \nabla_x \log p_{\mathrm{data}}(x)^T \nabla_x \log p_\theta(x) \right] &= - \int p_{\mathrm{data}}(x) \left( \frac{\nabla_x p_{\mathrm{data}}(x)}{p_{\mathrm{data}}(x)} \right)^T \nabla_x \log p_\theta(x) \, dx \\
+        &= - \int \nabla_x p_{\mathrm{data}}(x)^T \nabla_x \log p_\theta(x) \, dx
+    \end{align*}
+    We apply integration by parts to each dimension $i$:
+    \begin{equation*}
+        \int \frac{\partial p_{\mathrm{data}}(x)}{\partial x_i} \frac{\partial \log p_\theta(x)}{\partial x_i} \, dx = \left[ p_{\mathrm{data}}(x) \frac{\partial \log p_\theta(x)}{\partial x_i} \right]_{-\infty}^{\infty} - \int p_{\mathrm{data}}(x) \frac{\partial^2 \log p_\theta(x)}{\partial x_i^2} \, dx
+    \end{equation*}
+    Under mild regularity conditions, $p_{\mathrm{data}}(x) \to 0$ as $\|x\| \to \infty$, making the boundary term vanish. Thus:
+    \begin{align*}
+        - \int \nabla_x p_{\mathrm{data}}(x)^T \nabla_x \log p_\theta(x) \, dx &= \int p_{\mathrm{data}}(x) \sum_i \frac{\partial^2 \log p_\theta(x)}{\partial x_i^2} \, dx \\
+        &= \mathbb{E}_{x \sim p_{\mathrm{data}}} \left[ \mathrm{tr}(\nabla_x^2 \log p_\theta(x)) \right]
+    \end{align*}
+    Putting it all together, we obtain:
+    \begin{equation*}
+        F(p_{\mathrm{data}} \| p_\theta) = \mathbb{E}_{p_{\mathrm{data}}} \left[ \frac{1}{2} \|\nabla_x \log p_\theta(x)\|^2_2 + \mathrm{tr}(\nabla_x^2 \log p_\theta(x)) \right] + Const.
+    \end{equation*}
+}
+
+%% Problem 4 (Denoising Score Matching, 20 pts)
+\solution{
+    We start with the objective in denoising score matching:
+    \begin{equation*}
+        \int q_\sigma(\tilde{x}) \nabla_{\tilde{x}} \log q_\sigma(\tilde{x})^T s_\theta(\tilde{x}) \, d\tilde{x}
+    \end{equation*}
+    Using the identity $q_\sigma(\tilde{x}) \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}) = \nabla_{\tilde{x}} q_\sigma(\tilde{x})$, the objective becomes:
+    \begin{equation*}
+        \int \nabla_{\tilde{x}} q_\sigma(\tilde{x})^T s_\theta(\tilde{x}) \, d\tilde{x}
+    \end{equation*}
+    Since the perturbed data distribution $q_\sigma(\tilde{x})$ is obtained by convolving the data distribution $p_{\mathrm{data}}(x)$ with the noise kernel $q_\sigma(\tilde{x}|x)$, we have $q_\sigma(\tilde{x}) = \int p_{\mathrm{data}}(x) q_\sigma(\tilde{x}|x) \, dx$.
+    Substituting this into the gradient:
+    \begin{equation*}
+        \nabla_{\tilde{x}} q_\sigma(\tilde{x}) = \nabla_{\tilde{x}} \int p_{\mathrm{data}}(x) q_\sigma(\tilde{x}|x) \, dx = \int p_{\mathrm{data}}(x) \nabla_{\tilde{x}} q_\sigma(\tilde{x}|x) \, dx
+    \end{equation*}
+    Now substitute this back into the integral:
+    \begin{equation*}
+        \int \left( \int p_{\mathrm{data}}(x) \nabla_{\tilde{x}} q_\sigma(\tilde{x}|x) \, dx \right)^T s_\theta(\tilde{x}) \, d\tilde{x}
+    \end{equation*}
+    By Fubini's theorem, we can swap the order of integration:
+    \begin{equation*}
+        \int p_{\mathrm{data}}(x) \left( \int \nabla_{\tilde{x}} q_\sigma(\tilde{x}|x)^T s_\theta(\tilde{x}) \, d\tilde{x} \right) \, dx
+    \end{equation*}
+    Using the same log-derivative trick $\nabla_{\tilde{x}} q_\sigma(\tilde{x}|x) = q_\sigma(\tilde{x}|x) \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}|x)$, we obtain:
+    \begin{align*}
+        \int p_{\mathrm{data}}(x) \left( \int q_\sigma(\tilde{x}|x) \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}|x)^T s_\theta(\tilde{x}) \, d\tilde{x} \right) \, dx &= \mathbb{E}_{x \sim p_{\mathrm{data}}(x)} \mathbb{E}_{\tilde{x} \sim q_\sigma(\tilde{x}|x)} \left[ \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}|x)^T s_\theta(\tilde{x}) \right] \\
+        &= \mathbb{E}_{x \sim p_{\mathrm{data}}(x), \tilde{x} \sim q_\sigma(\tilde{x}|x)} \left[ \nabla_{\tilde{x}} \log q_\sigma(\tilde{x}|x)^T s_\theta(\tilde{x}) \right]
+    \end{align*}
+    This completes the proof.
+}
+
+%% Problem 5 (DDPM vs NCSN, 20 pts)
+\solution{
+    In DDPM, the forward diffusion process adds Gaussian noise progressively such that the distribution of the noisy state $x_t$ given $x_0$ is defined as:
+    \begin{equation*}
+        q(x_t|x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)I)
+    \end{equation*}
+    This means $x_t$ can be sampled as $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon$ where $\epsilon \sim \mathcal{N}(0, I)$.
+    The score function of this conditional distribution $q(x_t|x_0)$ represents the gradient of the log-probability with respect to $x_t$:
+    \begin{equation*}
+        \nabla_{x_t} \log q(x_t|x_0) = \nabla_{x_t} \left( -\frac{\|x_t - \sqrt{\bar{\alpha}_t} x_0\|^2}{2(1 - \bar{\alpha}_t)} + C \right) = - \frac{x_t - \sqrt{\bar{\alpha}_t} x_0}{1 - \bar{\alpha}_t} = - \frac{\epsilon}{\sqrt{1 - \bar{\alpha}_t}}
+    \end{equation*}
+    
+    The objective of DDPM is to train a neural network $\epsilon_\theta(x_t, t)$ to predict the noise $\epsilon$ added to the unperturbed data $x_0$ to generate $x_t$. Therefore, by predicting the noise $\epsilon$, the network is implicitly predicting the score function scaled by a constant factor. Specifically, the approximated score function $s_\theta(x_t, t)$ can be written in terms of the noise prediction network:
+    \begin{equation*}
+        s_\theta(x_t, t) \approx \nabla_{x_t} \log q_t(x_t) \approx - \frac{\epsilon_\theta(x_t, t)}{\sqrt{1 - \bar{\alpha}_t}}
+    \end{equation*}
+    
+    In Noise-Conditioned Score Networks (NCSN), the model explicitly learns the score function of data perturbed with a predefined schedule of noise levels $\sigma_1 > \sigma_2 > \cdots > \sigma_T$. The DDPM forward process naturally provides these varying noise levels, corresponding to a variance schedule $\sigma_t^2 \propto 1 - \bar{\alpha}_t$. Thus, predicting the noise $\epsilon$ in DDPM is mathematically equivalent to estimating the score function of the noise-perturbed data distributions across different noise scales, which is exactly the core mechanism of NCSN. This unifies DDPM and NCSN under the umbrella of score-based generative modeling.
+}
+
+%% Problem 6 (AI Usage Disclosure, 10 pts)
+\solution{
+    Used Claude (AI assistant by Anthropic) in the following capacities:
+    \begin{itemize}
+        \item \textbf{Solution ideation:} Brainstorming approaches and generating initial ideas for mathematical proofs, particularly for the DDPM variational lower bound derivation and the connection between DDPM and NCSN.
+        \item \textbf{English grammar and writing:} Polishing and refining the English writing throughout the solutions to improve clarity, coherence, and academic tone.
+        \item \textbf{\LaTeX{} formatting:} Optimizing typesetting and layout of mathematical expressions and document structure for better readability and presentation.
+        \item \textbf{Result verification:} Cross-checking the correctness of intermediate derivations, such as the Fisher Divergence integration by parts and the Denoising Score Matching expectation swap.
+    \end{itemize}
+    All final solutions were reviewed and verified by the author.
+}
+
+\ifnum\value{placeholderCount}>0
+    \vfill
+    \begin{center}
+        \color{red} \framebox{\textbf{WARNING: PLEASE REMOVE ALL PLACEHOLDERS BEFORE SUBMISSION}}
+    \end{center}
+\fi
+
+\end{document}
