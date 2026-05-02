@@ -14,3 +14,5 @@ check_point/
 figures_old/
 *.out
 .DS_Store
+*.bbl
+*.blg

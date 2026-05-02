@@ -7,7 +7,7 @@ set -e
 
 export PATH="/Library/TeX/texbin:$PATH"
 
-TEX_FILE="project_template"
+TEX_FILE="StreamLip_proposal"
 
 echo "🔨 第 1 次 pdflatex..."
 pdflatex -interaction=nonstopmode "$TEX_FILE.tex" > /dev/null 2>&1
