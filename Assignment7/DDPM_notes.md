@@ -470,4 +470,532 @@ $$L_{\text{simple}} = \mathbb{E}_{x_0, \epsilon, t} \left[ \| \epsilon - \epsilo
 
 ---
 
-> **后续**：Problem 3 讲 Fisher Divergence（分数匹配的另一种形式），Problem 4 讲 Denoising Score Matching，Problem 5 把 DDPM 和 NCSN（分数网络）联系起来。这些内容会在后续笔记中补充。
+---
+
+## Problem 3：Fisher Divergence 与 Score Matching
+
+### 1. Fisher Divergence 想比较什么？
+
+Fisher Divergence 不直接比较两个概率密度 $p_{\mathrm{data}}(x)$ 和 $p_\theta(x)$，而是比较它们的 **score function**：
+
+$$
+\nabla_x \log p_{\mathrm{data}}(x), \qquad \nabla_x \log p_\theta(x)
+$$
+
+目标是：
+
+$$
+F(p_{\mathrm{data}}\|p_\theta)
+=
+\frac{1}{2}
+\mathbb{E}_{x\sim p_{\mathrm{data}}}
+\left[
+\left\|
+\nabla_x \log p_{\mathrm{data}}(x)
+-
+\nabla_x \log p_\theta(x)
+\right\|_2^2
+\right]
+$$
+
+score 可以理解为“当前点附近概率密度上升最快的方向”。因为：
+
+$$
+\nabla_x \log p(x)=\frac{1}{p(x)}\nabla_x p(x)
+$$
+
+只要 $p(x)>0$，它和 $\nabla_x p(x)$ 的方向相同，只是长度被 $1/p(x)$ 缩放。因此 score 确实指向概率密度上升的方向。
+
+### 2. 为什么不用普通梯度 $\nabla_x p(x)$？
+
+使用 $\nabla_x \log p(x)$ 有两个好处：
+
+1. $\log$ 更数值稳定，概率密度很小时不会直接处理极小数。
+2. 如果模型是未归一化密度，例如
+
+$$
+p_\theta(x)=\frac{1}{Z_\theta}\exp(-E_\theta(x))
+$$
+
+那么：
+
+$$
+\nabla_x \log p_\theta(x)
+=
+-\nabla_x E_\theta(x)
+$$
+
+归一化常数 $Z_\theta$ 会消失，这对能量模型和 score matching 很重要。
+
+### 3. Problem 3 的推导目标
+
+Fisher Divergence 里面有一项：
+
+$$
+\nabla_x \log p_{\mathrm{data}}(x)
+$$
+
+但真实数据分布 $p_{\mathrm{data}}$ 不知道，所以这个 score 也不知道。Problem 3 的目标就是通过分部积分，把真实数据 score 消掉。
+
+展开平方：
+
+$$
+\frac{1}{2}\|s_{\mathrm{data}}-s_\theta\|^2
+=
+\frac{1}{2}\|s_{\mathrm{data}}\|^2
++
+\frac{1}{2}\|s_\theta\|^2
+-
+s_{\mathrm{data}}^T s_\theta
+$$
+
+其中：
+
+$$
+s_{\mathrm{data}}=\nabla_x\log p_{\mathrm{data}}(x),\qquad
+s_\theta=\nabla_x\log p_\theta(x)
+$$
+
+第一项不依赖 $\theta$，可以并入常数项。关键是交叉项：
+
+$$
+-
+\mathbb{E}_{p_{\mathrm{data}}}
+\left[
+\nabla_x\log p_{\mathrm{data}}(x)^T
+\nabla_x\log p_\theta(x)
+\right]
+$$
+
+利用：
+
+$$
+\nabla_x\log p_{\mathrm{data}}(x)
+=
+\frac{\nabla_x p_{\mathrm{data}}(x)}{p_{\mathrm{data}}(x)}
+$$
+
+得到：
+
+$$
+-
+\int
+\nabla_x p_{\mathrm{data}}(x)^T
+\nabla_x\log p_\theta(x)
+dx
+$$
+
+对每个维度做分部积分，并假设边界项消失：
+
+$$
+-
+\int
+\nabla_x p_{\mathrm{data}}(x)^T
+\nabla_x\log p_\theta(x)
+dx
+=
+\mathbb{E}_{p_{\mathrm{data}}}
+\left[
+\mathrm{tr}\left(\nabla_x^2\log p_\theta(x)\right)
+\right]
+$$
+
+最后得到：
+
+$$
+F(p_{\mathrm{data}}\|p_\theta)
+=
+\mathbb{E}_{p_{\mathrm{data}}}
+\left[
+\frac{1}{2}\|\nabla_x\log p_\theta(x)\|_2^2
++
+\mathrm{tr}\left(\nabla_x^2\log p_\theta(x)\right)
+\right]
++ Const.
+$$
+
+### 4. 这一步的实际意义
+
+Problem 3 说明：我们可以不显式知道真实数据 score，也能训练模型 score。
+
+但它还有实际困难：目标中有 Hessian trace：
+
+$$
+\mathrm{tr}\left(\nabla_x^2\log p_\theta(x)\right)
+$$
+
+这对神经网络训练很麻烦，而且真实数据分布常常集中在低维流形附近，直接学习原始分布的 score 也可能不稳定。因此 Problem 4 会引入 Denoising Score Matching。
+
+---
+
+## Problem 4：Denoising Score Matching 是怎么来的？
+
+### 1. 从原始数据 score 到带噪数据 score
+
+Problem 4 的思想是：不直接学 $p_{\mathrm{data}}(x)$ 的 score，而是先给样本加高斯噪声：
+
+$$
+\tilde{x}=x+\sigma\epsilon,\qquad \epsilon\sim\mathcal{N}(0,I)
+$$
+
+于是得到带噪分布：
+
+$$
+q_\sigma(\tilde{x})
+=
+\int p_{\mathrm{data}}(x)q_\sigma(\tilde{x}|x)dx
+$$
+
+现在学习：
+
+$$
+s_\theta(\tilde{x},\sigma)
+\approx
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x})
+$$
+
+这仍然是 score matching，只是目标分布从原始数据分布变成了带噪数据分布。
+
+### 2. 为什么目标里出现这个交叉项？
+
+如果对带噪分布 $q_\sigma$ 做 Fisher divergence，目标是：
+
+$$
+\frac{1}{2}
+\mathbb{E}_{\tilde{x}\sim q_\sigma}
+\left[
+\left\|
+s_\theta(\tilde{x})
+-
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x})
+\right\|^2
+\right]
+$$
+
+展开后有交叉项：
+
+$$
+-
+\mathbb{E}_{q_\sigma}
+\left[
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x})^T
+s_\theta(\tilde{x})
+\right]
+$$
+
+Problem 4 证明的核心就是：这个含有未知边缘 score 的项，可以改写成含有已知条件 score 的项：
+
+$$
+\mathbb{E}_{\tilde{x}\sim q_\sigma}
+\left[
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x})^T
+s_\theta(\tilde{x})
+\right]
+=
+\mathbb{E}_{x\sim p_{\mathrm{data}},\tilde{x}\sim q_\sigma(\tilde{x}|x)}
+\left[
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x}|x)^T
+s_\theta(\tilde{x})
+\right]
+$$
+
+推导的关键步骤是 log derivative trick：
+
+$$
+q_\sigma(\tilde{x})\nabla_{\tilde{x}}\log q_\sigma(\tilde{x})
+=
+\nabla_{\tilde{x}}q_\sigma(\tilde{x})
+$$
+
+再利用：
+
+$$
+q_\sigma(\tilde{x})
+=
+\int p_{\mathrm{data}}(x)q_\sigma(\tilde{x}|x)dx
+$$
+
+交换积分顺序后，再对条件分布使用：
+
+$$
+\nabla_{\tilde{x}}q_\sigma(\tilde{x}|x)
+=
+q_\sigma(\tilde{x}|x)
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x}|x)
+$$
+
+于是未知的边缘 score 被换成了已知的条件 score。
+
+### 3. 高斯加噪时，训练标签是什么？
+
+如果：
+
+$$
+q_\sigma(\tilde{x}|x)=\mathcal{N}(\tilde{x};x,\sigma^2I)
+$$
+
+那么：
+
+$$
+\nabla_{\tilde{x}}\log q_\sigma(\tilde{x}|x)
+=
+-
+\frac{\tilde{x}-x}{\sigma^2}
+=
+\frac{x-\tilde{x}}{\sigma^2}
+$$
+
+所以训练时可以让网络预测：
+
+$$
+s_\theta(\tilde{x},\sigma)
+\approx
+\frac{x-\tilde{x}}{\sigma^2}
+$$
+
+这就是“denoising”的来源：模型看到带噪样本 $\tilde{x}$，学习指向干净样本 $x$ 的方向。
+
+### 4. 只学带噪分布，怎么得到真实数据？
+
+如果只学一个固定 $\sigma$，确实只能得到被高斯平滑后的数据分布：
+
+$$
+q_\sigma=p_{\mathrm{data}}*\mathcal{N}(0,\sigma^2I)
+$$
+
+真正的 score-based generative modeling 会学习一整组噪声水平：
+
+$$
+\sigma_1>\sigma_2>\cdots>\sigma_T\approx 0
+$$
+
+训练：
+
+$$
+s_\theta(x,\sigma)
+\approx
+\nabla_x\log q_\sigma(x)
+$$
+
+生成时从大噪声开始，再逐渐降低噪声：
+
+$$
+\text{pure noise}
+\rightarrow
+\sigma_1
+\rightarrow
+\sigma_2
+\rightarrow
+\cdots
+\rightarrow
+\sigma_T\approx 0
+$$
+
+因为当 $\sigma_T\to 0$ 时：
+
+$$
+q_{\sigma_T}(x)\approx p_{\mathrm{data}}(x)
+$$
+
+所以最后的样本会逼近真实数据分布。
+
+### 5. 实际采样不是直接反解
+
+训练时标签是：
+
+$$
+\frac{x-\tilde{x}}{\sigma^2}
+$$
+
+但生成时没有干净样本 $x$，所以不能直接反解。生成时使用网络预测的 score：
+
+$$
+s_\theta(x,\sigma)
+$$
+
+一种典型采样方法是 annealed Langevin dynamics：
+
+$$
+x_{k+1}
+=
+x_k
++
+\eta s_\theta(x_k,\sigma)
++
+\sqrt{2\eta}z_k,
+\qquad
+z_k\sim\mathcal{N}(0,I)
+$$
+
+其中：
+
+- $\eta s_\theta(x_k,\sigma)$ 让样本往高概率区域移动。
+- $\sqrt{2\eta}z_k$ 保留随机性，避免只做确定性爬坡。
+- $\sigma$ 逐步减小，让样本从粗到细靠近真实数据。
+
+可以把生成过程理解成：
+
+$$
+\text{纯噪声}
+\rightarrow
+\text{粗略结构}
+\rightarrow
+\text{清晰形状}
+\rightarrow
+\text{细节纹理}
+\rightarrow
+\text{真实样本}
+$$
+
+---
+
+## Problem 5：DDPM 与 NCSN 的关系
+
+### 1. DDPM 的噪声预测其实是 score 预测
+
+DDPM 的前向过程为：
+
+$$
+q(x_t|x_0)
+=
+\mathcal{N}
+\left(
+x_t;
+\sqrt{\bar{\alpha}_t}x_0,
+(1-\bar{\alpha}_t)I
+\right)
+$$
+
+等价写成：
+
+$$
+x_t
+=
+\sqrt{\bar{\alpha}_t}x_0
++
+\sqrt{1-\bar{\alpha}_t}\epsilon,
+\qquad
+\epsilon\sim\mathcal{N}(0,I)
+$$
+
+对条件分布求 score：
+
+$$
+\nabla_{x_t}\log q(x_t|x_0)
+=
+-
+\frac{x_t-\sqrt{\bar{\alpha}_t}x_0}
+{1-\bar{\alpha}_t}
+$$
+
+又因为：
+
+$$
+x_t-\sqrt{\bar{\alpha}_t}x_0
+=
+\sqrt{1-\bar{\alpha}_t}\epsilon
+$$
+
+所以：
+
+$$
+\nabla_{x_t}\log q(x_t|x_0)
+=
+-
+\frac{\epsilon}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+因此，预测噪声 $\epsilon$ 等价于预测条件 score，只差一个已知缩放因子。
+
+### 2. 条件 score 和边缘 score 的关系
+
+DDPM 训练目标通常是：
+
+$$
+\mathbb{E}_{x_0,\epsilon,t}
+\left[
+\|\epsilon-\epsilon_\theta(x_t,t)\|^2
+\right]
+$$
+
+对固定的 $x_t,t$，MSE 最优预测是：
+
+$$
+\epsilon_\theta(x_t,t)
+=
+\mathbb{E}[\epsilon|x_t]
+$$
+
+由 denoising score matching/Tweedie identity，可得带噪边缘分布 $q_t(x_t)$ 的 score：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+-
+\frac{\mathbb{E}[\epsilon|x_t]}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+所以 DDPM 的噪声预测网络可以转换成 score 网络：
+
+$$
+s_\theta(x_t,t)
+\approx
+\nabla_{x_t}\log q_t(x_t)
+\approx
+-
+\frac{\epsilon_\theta(x_t,t)}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+这一步解释了为什么 DDPM 虽然训练目标写成预测噪声，本质上却是在学习不同噪声水平下的数据 score。
+
+### 3. NCSN 做什么？
+
+NCSN 显式训练：
+
+$$
+s_\theta(x,\sigma)
+\approx
+\nabla_x\log q_\sigma(x)
+$$
+
+其中：
+
+$$
+q_\sigma(x)
+=
+p_{\mathrm{data}}*\mathcal{N}(0,\sigma^2I)
+$$
+
+并使用一组噪声水平：
+
+$$
+\sigma_1>\sigma_2>\cdots>\sigma_T
+$$
+
+采样时，NCSN 通常用 annealed Langevin dynamics 从大噪声逐步走向小噪声。
+
+### 4. DDPM 和 NCSN 的统一视角
+
+二者都在学习一串噪声分布的 score：
+
+| 方法 | 学什么 | 噪声水平 | 采样方式 |
+|------|--------|----------|----------|
+| NCSN | 直接预测 $s_\theta(x,\sigma)$ | $\sigma_1,\ldots,\sigma_T$ | Annealed Langevin dynamics |
+| DDPM | 预测 $\epsilon_\theta(x_t,t)$，再换算成 score | $1-\bar{\alpha}_t$ 控制噪声强度 | 反向马尔可夫链 $p_\theta(x_{t-1}|x_t)$ |
+
+核心等价关系是：
+
+$$
+s_\theta(x_t,t)
+\approx
+-
+\frac{\epsilon_\theta(x_t,t)}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+一句话总结：
+
+> DDPM 的噪声预测目标和 NCSN 的 score matching 目标本质上是同一件事：它们都学习不同噪声水平下的 score field，然后从高噪声样本逐步去噪生成真实数据样本。

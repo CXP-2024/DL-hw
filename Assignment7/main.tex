@@ -201,22 +201,34 @@
 
 %% Problem 5 (DDPM vs NCSN, 20 pts)
 \solution{
-    In DDPM, the forward diffusion process adds Gaussian noise progressively such that the distribution of the noisy state $x_t$ given $x_0$ is defined as:
+    In DDPM, the forward diffusion process adds Gaussian noise progressively such that the distribution of the noisy state $x_t$ given $x_0$ is:
     \begin{equation*}
         q(x_t|x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)I)
     \end{equation*}
-    This means $x_t$ can be sampled as $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon$ where $\epsilon \sim \mathcal{N}(0, I)$.
-    The score function of this conditional distribution $q(x_t|x_0)$ represents the gradient of the log-probability with respect to $x_t$:
+    Equivalently,
+    \begin{equation*}
+        x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon, \quad \epsilon \sim \mathcal{N}(0, I).
+    \end{equation*}
+    The conditional score of this Gaussian distribution is:
     \begin{equation*}
         \nabla_{x_t} \log q(x_t|x_0) = \nabla_{x_t} \left( -\frac{\|x_t - \sqrt{\bar{\alpha}_t} x_0\|^2}{2(1 - \bar{\alpha}_t)} + C \right) = - \frac{x_t - \sqrt{\bar{\alpha}_t} x_0}{1 - \bar{\alpha}_t} = - \frac{\epsilon}{\sqrt{1 - \bar{\alpha}_t}}
     \end{equation*}
-    
-    The objective of DDPM is to train a neural network $\epsilon_\theta(x_t, t)$ to predict the noise $\epsilon$ added to the unperturbed data $x_0$ to generate $x_t$. Therefore, by predicting the noise $\epsilon$, the network is implicitly predicting the score function scaled by a constant factor. Specifically, the approximated score function $s_\theta(x_t, t)$ can be written in terms of the noise prediction network:
+    Thus, predicting the noise $\epsilon$ is equivalent to predicting the conditional score up to the known scalar factor $-\sqrt{1-\bar{\alpha}_t}$.
+
+    The usual DDPM training objective is:
     \begin{equation*}
-        s_\theta(x_t, t) \approx \nabla_{x_t} \log q_t(x_t) \approx - \frac{\epsilon_\theta(x_t, t)}{\sqrt{1 - \bar{\alpha}_t}}
+        \mathbb{E}_{x_0,\epsilon,t}\left[\left\|\epsilon - \epsilon_\theta(x_t,t)\right\|_2^2\right].
     \end{equation*}
-    
-    In Noise-Conditioned Score Networks (NCSN), the model explicitly learns the score function of data perturbed with a predefined schedule of noise levels $\sigma_1 > \sigma_2 > \cdots > \sigma_T$. The DDPM forward process naturally provides these varying noise levels, corresponding to a variance schedule $\sigma_t^2 \propto 1 - \bar{\alpha}_t$. Thus, predicting the noise $\epsilon$ in DDPM is mathematically equivalent to estimating the score function of the noise-perturbed data distributions across different noise scales, which is exactly the core mechanism of NCSN. This unifies DDPM and NCSN under the umbrella of score-based generative modeling.
+    For a fixed $x_t$ and $t$, the MSE-optimal prediction is $\epsilon_\theta(x_t,t) = \mathbb{E}[\epsilon \mid x_t]$. By the denoising score matching identity, the marginal score of the noisy distribution $q_t(x_t)$ satisfies:
+    \begin{equation*}
+        \nabla_{x_t}\log q_t(x_t) = -\frac{\mathbb{E}[\epsilon \mid x_t]}{\sqrt{1-\bar{\alpha}_t}}.
+    \end{equation*}
+    Therefore the noise prediction network also defines a score estimator:
+    \begin{equation*}
+        s_\theta(x_t,t) \approx \nabla_{x_t}\log q_t(x_t) \approx -\frac{\epsilon_\theta(x_t,t)}{\sqrt{1-\bar{\alpha}_t}}.
+    \end{equation*}
+
+    This is exactly the connection to Noise-Conditioned Score Networks (NCSN). In NCSN, one explicitly trains a score network $s_\theta(x,\sigma)$ for data distributions perturbed by a schedule of Gaussian noise levels $\sigma_1 > \sigma_2 > \cdots > \sigma_T$. DDPM also provides a sequence of noise levels through $t$, with effective noise variance controlled by $1-\bar{\alpha}_t$. The difference is mostly parameterization: NCSN directly predicts the score, while DDPM usually predicts the added noise and converts it to a score by a known scaling factor. Both methods learn score fields over progressively less noisy data distributions and generate samples by starting from high noise and moving through the learned reverse denoising process toward the data distribution.
 }
 
 %% Problem 6 (AI Usage Disclosure, 10 pts)
