@@ -951,7 +951,245 @@ $$
 
 这一步解释了为什么 DDPM 虽然训练目标写成预测噪声，本质上却是在学习不同噪声水平下的数据 score。
 
-### 3. NCSN 做什么？
+### 3. 为什么 $x_0$ 会从条件 score 里消失？
+
+这里最容易混淆的是两个不同的 score：
+
+$$
+\nabla_{x_t}\log q(x_t|x_0)
+$$
+
+这是 **条件 score**：已经知道原始样本 $x_0$ 时，$x_t$ 的概率密度上升方向。
+
+另一个是：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+$$
+
+这是 **边缘 score**：只看到 $x_t$，不知道它来自哪个 $x_0$ 时，整体带噪分布的概率密度上升方向。
+
+边缘分布定义为：
+
+$$
+q_t(x_t)
+=
+\int q_{\mathrm{data}}(x_0)q(x_t|x_0)dx_0
+$$
+
+也就是：从真实数据分布采样 $x_0$，再加噪得到 $x_t$，最后把所有可能的 $x_0$ 积分掉。
+
+对边缘分布求 score：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+\frac{\nabla_{x_t}q_t(x_t)}{q_t(x_t)}
+$$
+
+代入 $q_t(x_t)$：
+
+$$
+\nabla_{x_t}q_t(x_t)
+=
+\nabla_{x_t}
+\int q_{\mathrm{data}}(x_0)q(x_t|x_0)dx_0
+$$
+
+在常规光滑性条件下，求导和积分可以交换：
+
+$$
+\nabla_{x_t}q_t(x_t)
+=
+\int q_{\mathrm{data}}(x_0)
+\nabla_{x_t}q(x_t|x_0)dx_0
+$$
+
+使用 log derivative trick：
+
+$$
+\nabla_{x_t}q(x_t|x_0)
+=
+q(x_t|x_0)
+\nabla_{x_t}\log q(x_t|x_0)
+$$
+
+所以：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+\int
+\frac{
+q_{\mathrm{data}}(x_0)q(x_t|x_0)
+}{
+q_t(x_t)
+}
+\nabla_{x_t}\log q(x_t|x_0)
+dx_0
+$$
+
+根据 Bayes 公式：
+
+$$
+q(x_0|x_t)
+=
+\frac{
+q_{\mathrm{data}}(x_0)q(x_t|x_0)
+}{
+q_t(x_t)
+}
+$$
+
+于是得到 Fisher identity：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+\mathbb{E}_{q(x_0|x_t)}
+\left[
+\nabla_{x_t}\log q(x_t|x_0)
+\right]
+$$
+
+这说明：边缘 score 等于条件 score 对所有可能原图 $x_0$ 的后验平均。$x_0$ 不是凭空消失了，而是被积分掉了。
+
+### 4. 为什么可以写成 $\mathbb{E}[\epsilon|x_t]$？
+
+DDPM 前向过程为：
+
+$$
+x_t
+=
+\sqrt{\bar{\alpha}_t}x_0
++
+\sqrt{1-\bar{\alpha}_t}\epsilon
+$$
+
+如果同时知道 $x_t$ 和 $x_0$，噪声可以直接反解：
+
+$$
+\epsilon
+=
+\frac{x_t-\sqrt{\bar{\alpha}_t}x_0}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+所以条件 score 可以写成：
+
+$$
+\nabla_{x_t}\log q(x_t|x_0)
+=
+-
+\frac{\epsilon}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+把它代入 Fisher identity：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+\mathbb{E}_{q(x_0|x_t)}
+\left[
+-
+\frac{\epsilon}
+{\sqrt{1-\bar{\alpha}_t}}
+\right]
+$$
+
+由于 $\sqrt{1-\bar{\alpha}_t}$ 对给定时间步 $t$ 是常数：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+-
+\frac{
+\mathbb{E}_{q(x_0|x_t)}[\epsilon]
+}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+这里的 $\epsilon$ 实际上是 $x_0$ 和 $x_t$ 的函数：
+
+$$
+\epsilon(x_0,x_t)
+=
+\frac{x_t-\sqrt{\bar{\alpha}_t}x_0}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+因此：
+
+$$
+\mathbb{E}_{q(x_0|x_t)}[\epsilon]
+=
+\mathbb{E}[\epsilon|x_t]
+$$
+
+展开写就是：
+
+$$
+\mathbb{E}[\epsilon|x_t]
+=
+\mathbb{E}
+\left[
+\frac{x_t-\sqrt{\bar{\alpha}_t}x_0}
+{\sqrt{1-\bar{\alpha}_t}}
+\middle|x_t
+\right]
+$$
+
+因为 $x_t$ 已经给定，是常量：
+
+$$
+\mathbb{E}[\epsilon|x_t]
+=
+\frac{
+x_t-\sqrt{\bar{\alpha}_t}\mathbb{E}[x_0|x_t]
+}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+所以 $\epsilon$ 并不是和 $x_0$ 没关系。更准确地说：
+
+- 前向采样时，$\epsilon$ 和 $x_0$ 是独立采样的。
+- 但给定 $x_t$ 之后，$\epsilon$ 和 $x_0$ 会通过方程 $x_t=\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon$ 产生后验相关性。
+- $\mathbb{E}[\epsilon|x_t]$ 表示只看到 $x_t$ 时，对所有可能 $x_0$ 对应噪声的平均估计。
+
+这就是：
+
+$$
+\nabla_{x_t}\log q_t(x_t)
+=
+-
+\frac{\mathbb{E}[\epsilon|x_t]}
+{\sqrt{1-\bar{\alpha}_t}}
+$$
+
+的来源。
+
+DDPM 训练时知道真实 $x_0$，所以可以计算真实噪声 $\epsilon$ 来监督网络。但网络输入只有 $(x_t,t)$，因此 MSE 最优预测器满足：
+
+$$
+\epsilon_\theta(x_t,t)
+\approx
+\mathbb{E}[\epsilon|x_t,t]
+$$
+
+于是：
+
+$$
+-
+\frac{\epsilon_\theta(x_t,t)}
+{\sqrt{1-\bar{\alpha}_t}}
+\approx
+\nabla_{x_t}\log q_t(x_t)
+$$
+
+这就是 DDPM 噪声预测和边缘 score 估计之间的完整数学关系。
+
+### 5. NCSN 做什么？
 
 NCSN 显式训练：
 
@@ -977,7 +1215,7 @@ $$
 
 采样时，NCSN 通常用 annealed Langevin dynamics 从大噪声逐步走向小噪声。
 
-### 4. DDPM 和 NCSN 的统一视角
+### 6. DDPM 和 NCSN 的统一视角
 
 二者都在学习一串噪声分布的 score：
 
